@@ -12,9 +12,10 @@
     group: Group | undefined;
     look: WorldLook;
     u: Uniforms;
+    baked: boolean;
     materials: Record<'planet' | 'clouds' | 'atmosphere' | 'ring' | 'star' | 'corona' | 'hole' | 'nebula', Material>;
   }
-  let { group = $bindable(), look, u, materials }: Props = $props();
+  let { group = $bindable(), look, u, materials, baked }: Props = $props();
   // the primary star moves round the centre of mass in a binary, so it lives in a group of its own
   let primary = $state<Group>();
 
@@ -25,8 +26,8 @@
 
 <!-- tilted frame; scale, position and spin are driven per frame by Scene -->
 <T.Group bind:ref={group}>
-  <T.Mesh geometry={sphere} material={materials.planet} renderOrder={0} visible={look.kind === 'planet'} />
-  <T.Mesh geometry={sphere} material={materials.clouds} scale={1.0075} renderOrder={1} visible={look.kind === 'planet' && look.clouds} />
+  <T.Mesh geometry={sphere} material={materials.planet} renderOrder={0} visible={look.kind === 'planet' && baked} />
+  <T.Mesh geometry={sphere} material={materials.clouds} scale={1.0075} renderOrder={1} visible={look.kind === 'planet' && look.clouds && baked} />
   <T.Mesh geometry={ringGeometry} material={materials.ring} renderOrder={1} visible={look.kind === 'planet' && look.ring} />
   <T.Mesh geometry={sphere} material={materials.atmosphere} scale={ATMO_RADIUS} renderOrder={2} visible={look.kind === 'planet'} />
 

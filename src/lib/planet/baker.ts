@@ -138,6 +138,11 @@ export class WorldBaker {
     onWorld(this.world, this.look);
   }
 
+  /** True once every texture the world samples has been baked: drawing before then reads mip levels nothing has written yet. */
+  get baked() {
+    return this.phase === 'fadein' || this.phase === 'live' || this.phase === 'fadeout';
+  }
+
   get state(): 'BOOT' | 'SURVEY' | 'LOCKED' {
     if (this.phase === 'live') return 'LOCKED';
     return this.phase === 'fadein' ? 'SURVEY' : 'BOOT';

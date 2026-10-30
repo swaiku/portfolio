@@ -39,6 +39,7 @@
   };
 
   let group = $state<Group>();
+  let baked = $state(false);
   let dome = $state<Mesh>();
 
   const baker = new WorldBaker(
@@ -93,6 +94,7 @@
   useTask((dt) => {
     dt = Math.min(dt, 0.1);
     baker.step(dt);
+    if (baker.baked !== baked) baked = baker.baked;
 
     // the pose is already scrubbed along the scroll by GSAP; a quick follow only irons out frame-to-frame noise
     const ease = reduced ? 1 : 1 - Math.exp(-dt * 14);
@@ -175,4 +177,4 @@
 
 <T.PerspectiveCamera makeDefault position={[0, 0, CAMERA_Z]} fov={FOV} near={0.1} far={200} />
 <T.Mesh bind:ref={dome} geometry={domeGeometry} material={skyMaterial} renderOrder={-10} frustumCulled={false} />
-<Globe bind:group {look} {u} {materials} />
+<Globe bind:group {look} {u} {materials} {baked} />
