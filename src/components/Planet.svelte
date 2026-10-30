@@ -39,6 +39,7 @@
             renderMode="always"
             dpr={[1, 2]}
             toneMapping={NoToneMapping}
+            shadows={false}
         >
             <Scene {u} />
         </Canvas>
