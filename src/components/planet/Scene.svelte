@@ -91,7 +91,8 @@
     dt = Math.min(dt, 0.1);
     baker.step(dt);
 
-    const ease = reduced ? 1 : 1 - Math.exp(-dt * 2.4);
+    // the pose is already scrubbed along the scroll by GSAP; a quick follow only irons out frame-to-frame noise
+    const ease = reduced ? 1 : 1 - Math.exp(-dt * 14);
     cur.x += (stages.target.x - cur.x) * ease;
     cur.y += (stages.target.y - cur.y) * ease;
     cur.s += (stages.target.s - cur.s) * ease;
