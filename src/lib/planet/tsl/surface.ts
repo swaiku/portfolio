@@ -21,6 +21,26 @@ const tangentFrame = (n: Node) => {
   return { T, B: cross(n, T) };
 };
 
+/** Ring opacity at distance `r` from the planet's axis, in the ring plane. Shared by the ring itself and its shadow. */
+const ringAlpha = (u: Uniforms, r: Node) => {
+  const k = r.sub(u.ringIn).div(u.ringOut.sub(u.ringIn));
+  const b1 = gnoise(vec3(r.mul(u.ringF1), 1, 2)).mul(0.5).add(0.5);
+  const b2 = gnoise(vec3(r.mul(u.ringF2), 4, 7)).mul(0.5).add(0.5);
+  const bands = clamp(b1.mul(0.55).add(b2.mul(0.35)), 0, 1);
+  let open: Node = float(0);
+  for (const g of u.ringGaps) open = max(open, smoothstep(g.y, 0, abs(k.sub(g.x))));
+  const edge = smoothstep(0, 0.05, k).mul(smoothstep(1, 0.9, k));
+  return { alpha: edge.mul(bands.mul(0.82).add(0.18)).mul(float(1).sub(open.mul(0.92))).mul(u.ringAmt), b1 };
+};
+
+/** How much of the sun the rings take from a point on the planet: walk the sun ray up to the ring plane. */
+const ringShadow = (u: Uniforms, p: Node, L: Node) => {
+  const t = p.y.negate().div(L.y);
+  const hit = p.add(L.mul(t));
+  const a = ringAlpha(u, length(hit.xz)).alpha;
+  return select(t.greaterThan(0.0001), a, float(0)).mul(u.hasRing).mul(0.6); // softer than a full-strength shadow
+};
+
 const sampleAt = (tex: Texture, dir: Node, lod: Node) => texture(tex, dirToUv(dir)).level(lod);
 
 export const createPlanetMaterial = (u: Uniforms, planetTex: Texture, cloudTex: Texture) => {
@@ -82,7 +102,7 @@ export const createPlanetMaterial = (u: Uniforms, planetTex: Texture, cloudTex: 
     const ndlG = dot(N0, L).toVar();
     const q = normalize(N0.add(L.mul(float(0.012).div(max(ndlG, 0.14)))));
     const cs = sampleAt(cloudTex, u.rotC.mul(q), lod.add(1)).x.mul(u.cloudAmt);
-    const shadow = float(1).sub(cs.mul(0.72));
+    const shadow = float(1).sub(cs.mul(0.72)).mul(float(1).sub(ringShadow(u, N0, L)));
 
     // --- direct light ---
     const ndl = max(dot(nUse, L), 0);
@@ -172,15 +192,7 @@ export const createRingMaterial = (u: Uniforms) => {
   m.depthWrite = false;
   m.side = DoubleSide;
   m.fragmentNode = Fn(() => {
-    const r = length(positionLocal.xz);
-    const k = r.sub(u.ringIn).div(u.ringOut.sub(u.ringIn));
-    const b1 = gnoise(vec3(r.mul(u.ringF1), 1, 2)).mul(0.5).add(0.5);
-    const b2 = gnoise(vec3(r.mul(u.ringF2), 4, 7)).mul(0.5).add(0.5);
-    const bands = clamp(b1.mul(0.55).add(b2.mul(0.35)), 0, 1);
-    let open: Node = float(0);
-    for (const g of u.ringGaps) open = max(open, smoothstep(g.y, 0, abs(k.sub(g.x))));
-    const edge = smoothstep(0, 0.05, k).mul(smoothstep(1, 0.9, k));
-    const alpha = edge.mul(bands.mul(0.82).add(0.18)).mul(float(1).sub(open.mul(0.92))).mul(u.ringAmt);
+    const { alpha, b1 } = ringAlpha(u, length(positionLocal.xz));
 
     // the planet shadows its own rings
     const L = normalize(u.sunL);

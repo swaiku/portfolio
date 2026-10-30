@@ -24,7 +24,7 @@
   const coarse = matchMedia('(pointer: coarse)').matches || innerWidth < 760;
 
   let { u }: { u: Uniforms } = $props();
-  let look = $state<WorldLook>({ kind: 'planet', clouds: false, ring: false, sizeK: 1, shiftX: 0, tilt: [0.3, -0.4] });
+  let look = $state<WorldLook>({ kind: 'planet', clouds: false, ring: false, sizeK: 1, size: 1, shiftX: 0, tilt: [0.3, -0.4] });
 
   const announce = (w: World) => {
     document.documentElement.style.setProperty('--color-amber', w.accent);
@@ -110,7 +110,7 @@
       scale = Math.min(cur.s, 1.1) * look.sizeK;
       y = Math.max(cur.y, -0.55);
     } else scale = cur.s * lerp(1, look.sizeK, aside);
-    const radius = scale * Math.min(halfH, halfW);
+    const radius = scale * look.size * Math.min(halfH, halfW);
 
     if (group) {
       group.rotation.set(look.tilt[0] + pointer.y * 0.03, 0, look.tilt[1]);

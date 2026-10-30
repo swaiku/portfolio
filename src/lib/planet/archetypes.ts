@@ -159,6 +159,7 @@ export interface World {
   ring: RingSpec | null;
   tilt: [number, number]; // axis tilt toward the camera / roll
   activity: number; // star storms
+  size: number; // overall scale, rolled last so older seeds keep their other traits
   accent: string;
 }
 
@@ -219,6 +220,7 @@ export function rollWorld(seed: number, kind?: string, avoid?: string): World {
     ? [0.05 + r() * 0.13, (r() - 0.5) * 0.6]
     : [0.1 + r() * 0.5, (r() - 0.5) * 1.5];
   const activity = 0.4 + r() * 0.6;
+  const size = 0.84 + r() * 0.3;
 
   // UI accent follows the rolled palette; keep it bright enough to read on the dark page
   const c = new THREE.Color(tpl.accent);
@@ -227,7 +229,7 @@ export function rollWorld(seed: number, kind?: string, avoid?: string): World {
   c.setHSL((h.h + hue + 1) % 1, Math.max(0.65, Math.min(1, h.s + sat)), Math.min(0.7, Math.max(0.58, h.l)), THREE.SRGBColorSpace);
   const accent = '#' + c.getHexString(THREE.SRGBColorSpace);
 
-  return { seed, name, kind: family, tpl, arch, terrainSeed, hue, sat, ring, tilt, activity, accent };
+  return { seed, name, kind: family, tpl, arch, terrainSeed, hue, sat, ring, tilt, activity, size, accent };
 }
 
 /** Rotates a colour around the wheel by the world's hue, with a little saturation drift. */

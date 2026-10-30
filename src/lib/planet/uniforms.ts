@@ -15,7 +15,7 @@ export const createUniforms = () => ({
   liqDeep: v3(), liqShallow: v3(), iceCol: v3(1), glowCol: v3(), cloudTint: v3(1), atmoCol: v3(0.05, 0.13, 0.34),
   ringA: v3(), ringB: v3(),
   ringIn: uniform(1.3), ringOut: uniform(2), ringAmt: uniform(0.9), ringF1: uniform(30), ringF2: uniform(120),
-  ringGaps: [v2(), v2(), v2()],
+  ringGaps: [v2(), v2(), v2()], hasRing: uniform(0),
   sea: uniform(0.1), hasLiq: uniform(0), strata: uniform(0), strataF: uniform(6), ice: uniform(0),
   glowAmt: uniform(0), glowDay: uniform(0), glowMode: uniform(0), cloudAmt: uniform(1), activity: uniform(0.7),
   br: v3(7.6, 17.8, 45), scatter: uniform(0.62),
@@ -31,6 +31,7 @@ export interface WorldLook {
   ring: boolean;
   /** footprint multiplier once the planet sits to one side (rings and coronas need the room) */
   sizeK: number;
+  size: number; // this world's own size, a little either side of 1
   shiftX: number;
   tilt: [number, number];
 }
@@ -55,7 +56,8 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
   tpl.ramp.forEach((c, i) => (u.ramp[i].value = tint(c)));
   u.activity.value = w.activity;
 
-  const look: WorldLook = { kind: w.kind, clouds: false, ring: false, sizeK: 1, shiftX: 0, tilt: w.tilt };
+  u.hasRing.value = w.ring ? 1 : 0;
+  const look: WorldLook = { kind: w.kind, clouds: false, ring: false, sizeK: 1, size: w.size, shiftX: 0, tilt: w.tilt };
 
   if (w.kind === 'star') {
     u.sunCol.value = tint(tpl.ramp[3]).lerp(new Vector3(1, 1, 1), 0.4);
