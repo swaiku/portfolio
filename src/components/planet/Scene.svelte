@@ -13,6 +13,7 @@
   import type { Uniforms, WorldLook } from '../../lib/planet/uniforms';
   import { createCoronaMaterial, createStarMaterial } from '../../lib/planet/tsl/star';
   import { createHoleMaterial } from '../../lib/planet/tsl/hole';
+  import { createNebulaMaterial } from '../../lib/planet/tsl/space';
   import Globe from './Globe.svelte';
 
   const FOV = 30;
@@ -24,15 +25,16 @@
   const coarse = matchMedia('(pointer: coarse)').matches || innerWidth < 760;
 
   let { u }: { u: Uniforms } = $props();
-  let look = $state<WorldLook>({ kind: 'planet', clouds: false, ring: false, sizeK: 1, size: 1, shiftX: 0, tilt: [0.3, -0.4] });
+  let look = $state<WorldLook>({ kind: 'planet', clouds: false, ring: false, sizeK: 1, size: 1, shiftX: 0, tilt: [0.3, -0.4], moons: [], belt: null, binary: false, jets: false, beamTilt: 0.8, spin: 4.6, period: 1, companion: null, body: 1 });
 
   const announce = (w: World) => {
     document.documentElement.style.setProperty('--color-amber', w.accent);
-    const detail = { name: w.name, kind: w.tpl.label, accent: w.accent, seed: w.seed.toString(16).toUpperCase().padStart(6, '0') };
+    const detail = { name: w.name, kind: w.type.label, rarity: w.type.rarity, accent: w.accent, seed: w.seed.toString(16).toUpperCase().padStart(6, '0') };
     (window as unknown as { __planet?: unknown }).__planet = detail;
     dispatchEvent(new CustomEvent('planet:info', { detail }));
     sim.name = detail.name;
     sim.kind = detail.kind;
+    sim.rarity = detail.rarity;
     sim.seed = detail.seed;
   };
 
@@ -55,8 +57,9 @@
     atmosphere: createAtmosphereMaterial(u),
     ring: createRingMaterial(u),
     star: createStarMaterial(u),
-    corona: createCoronaMaterial(u),
+    corona: createCoronaMaterial(u, { center: u.primaryAt, scale: u.primaryScale, occluder: { center: u.companionAt, radius: u.companionR } }),
     hole: createHoleMaterial(u, baker.sky.target.texture),
+    nebula: createNebulaMaterial(u, baker.nebula.target.texture),
   };
   const skyMaterial = createSkyMaterial(baker.sky.target.texture, u);
   const domeGeometry = new SphereGeometry(80, 48, 32);
@@ -135,7 +138,11 @@
     drift += reduced ? 0 : dt * 0.0035;
     if (!reduced) u.clock.value += dt;
     angularVelocity = dt > 0 ? (angle + spin - before) / dt : 0;
-    rotateY(u.rotP.value, angle + spin);
+    // a pulsar's surface is carried round with its beams: same axis, same rate (rotateY turns the sampling frame, hence the sign)
+    if (look.jets) {
+      angularVelocity = reduced ? 0 : (Math.PI * 2) / look.period; // the readout shows the real spin, the screen a compressed one
+      rotateY(u.rotP.value, -u.clock.value * look.spin);
+    } else rotateY(u.rotP.value, angle + spin);
     rotateY(u.rotC.value, angle + spin + drift);
 
     if (dome) {
@@ -168,4 +175,4 @@
 
 <T.PerspectiveCamera makeDefault position={[0, 0, CAMERA_Z]} fov={FOV} near={0.1} far={200} />
 <T.Mesh bind:ref={dome} geometry={domeGeometry} material={skyMaterial} renderOrder={-10} frustumCulled={false} />
-<Globe bind:group {look} {materials} />
+<Globe bind:group {look} {u} {materials} />

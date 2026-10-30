@@ -7,7 +7,7 @@ import type { NodeMaterial, WebGPURenderer } from 'three/webgpu';
 import { randomSeed, rollWorld, type World } from './archetypes';
 import { applyWorld, type Uniforms, type WorldLook } from './uniforms';
 import {
-  createCloudDensityBake, createSkyBake, createSlopePass, createTerrainHeightBake, strip, terrainMoisture,
+  createCloudDensityBake, createNebulaBake, createSkyBake, createSlopePass, createTerrainHeightBake, NEBULA_ASPECT, strip, terrainMoisture,
 } from './tsl/bake';
 
 interface Pass { material: NodeMaterial; target: RenderTarget; strips: number }
@@ -77,13 +77,14 @@ class Bake {
   }
 }
 
-export type Phase = 'sky' | 'planet' | 'clouds' | 'fadein' | 'live' | 'fadeout';
+export type Phase = 'sky' | 'nebula' | 'planet' | 'clouds' | 'fadein' | 'live' | 'fadeout';
 
 /** Owns the baked textures and the life cycle of the current world: bake → fade in → live → fade out → next world. */
 export class WorldBaker {
   readonly sky: Bake;
   readonly planet: Bake;
   readonly clouds: Bake;
+  readonly nebula: Bake;
   phase: Phase = 'sky';
   fade = 0;
   world: World;
@@ -115,7 +116,7 @@ export class WorldBaker {
     this.planet = new Bake(renderer, [
       { material: createTerrainHeightBake(u.terrain), target: heights, strips: size >= 4096 ? 32 : 16 },
       {
-        material: createSlopePass(heights.texture, size, size / 2, terrainMoisture(u.terrain.seed)),
+        material: createSlopePass(heights.texture, size, size / 2, terrainMoisture(u.terrain)),
         target: makeTarget(size, size / 2, 'color'),
         strips: 8,
       },
@@ -129,6 +130,10 @@ export class WorldBaker {
         strips: 8,
       },
     ]);
+    const nebulaW = Math.min(size, 1536);
+    this.nebula = new Bake(renderer, [
+      { material: createNebulaBake(u), target: makeTarget(nebulaW, Math.round(nebulaW / NEBULA_ASPECT / 2) * 2, 'color-nomip'), strips: 32 },
+    ]);
     this.look = applyWorld(u, this.world);
     onWorld(this.world, this.look);
   }
@@ -140,7 +145,8 @@ export class WorldBaker {
 
   step(dt: number) {
     switch (this.phase) {
-      case 'sky': this.sky.step(); if (this.sky.done) this.phase = this.look.kind === 'planet' ? 'planet' : 'fadein'; break;
+      case 'sky': this.sky.step(); if (this.sky.done) this.phase = this.look.kind === 'planet' ? 'planet' : this.look.kind === 'nebula' ? 'nebula' : 'fadein'; break;
+      case 'nebula': this.nebula.step(); if (this.nebula.done) this.phase = 'fadein'; break;
       case 'planet': this.planet.step(); if (this.planet.done) this.phase = 'clouds'; break;
       case 'clouds': this.clouds.step(); if (this.clouds.done) this.phase = 'fadein'; break;
       case 'fadein':
@@ -154,7 +160,7 @@ export class WorldBaker {
           this.pending = null;
           this.look = applyWorld(this.u, this.world);
           this.onWorld(this.world, this.look);
-          this.sky.restart(); this.planet.restart(); this.clouds.restart();
+          this.sky.restart(); this.planet.restart(); this.clouds.restart(); this.nebula.restart();
           this.phase = 'sky';
         }
         break;
@@ -164,11 +170,11 @@ export class WorldBaker {
 
   reseed() {
     if (this.phase !== 'live') return;
-    this.pending = rollWorld(randomSeed(), undefined, this.world.arch.id);
+    this.pending = rollWorld(randomSeed(), undefined, this.world.tpl.id, this.world.hue);
     this.phase = 'fadeout';
   }
 
   dispose() {
-    [this.sky, this.planet, this.clouds].forEach((b) => b.dispose());
+    [this.sky, this.planet, this.clouds, this.nebula].forEach((b) => b.dispose());
   }
 }

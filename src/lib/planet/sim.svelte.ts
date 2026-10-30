@@ -5,5 +5,6 @@ export const sim = $state({
   seed: '------',
   name: '--',
   kind: '--',
+  rarity: '--',
   state: 'BOOT' as 'BOOT' | 'SURVEY' | 'LOCKED' | 'NO-GL',
 });

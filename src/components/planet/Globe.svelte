@@ -4,14 +4,19 @@
   import { RingGeometry, SphereGeometry } from 'three/webgpu';
   import { ATMO_RADIUS } from '../../lib/planet/tsl/atmosphere';
   import { CORONA_RADIUS } from '../../lib/planet/tsl/star';
+  import Satellites from './Satellites.svelte';
+  import type { Uniforms } from '../../lib/planet/uniforms';
   import type { WorldLook } from '../../lib/planet/uniforms';
 
   interface Props {
     group: Group | undefined;
     look: WorldLook;
-    materials: Record<'planet' | 'clouds' | 'atmosphere' | 'ring' | 'star' | 'corona' | 'hole', Material>;
+    u: Uniforms;
+    materials: Record<'planet' | 'clouds' | 'atmosphere' | 'ring' | 'star' | 'corona' | 'hole' | 'nebula', Material>;
   }
-  let { group = $bindable(), look, materials }: Props = $props();
+  let { group = $bindable(), look, u, materials }: Props = $props();
+  // the primary star moves round the centre of mass in a binary, so it lives in a group of its own
+  let primary = $state<Group>();
 
   const sphere = new SphereGeometry(1, 192, 128);
   // wide enough for any rolled ring; the material masks the real inner/outer radii
@@ -25,8 +30,12 @@
   <T.Mesh geometry={ringGeometry} material={materials.ring} renderOrder={1} visible={look.kind === 'planet' && look.ring} />
   <T.Mesh geometry={sphere} material={materials.atmosphere} scale={ATMO_RADIUS} renderOrder={2} visible={look.kind === 'planet'} />
 
-  <T.Mesh geometry={sphere} material={materials.star} renderOrder={0} visible={look.kind === 'star'} />
-  <T.Mesh geometry={sphere} material={materials.corona} scale={CORONA_RADIUS} renderOrder={2} visible={look.kind === 'star'} />
+  <T.Group bind:ref={primary}>
+    <T.Mesh geometry={sphere} material={materials.star} scale={look.body} renderOrder={0} visible={look.kind === 'star'} />
+    <T.Mesh geometry={sphere} material={materials.corona} scale={CORONA_RADIUS * look.body} renderOrder={2} visible={look.kind === 'star'} />
+  </T.Group>
 
   <T.Mesh geometry={sphere} material={materials.hole} renderOrder={0} visible={look.kind === 'hole'} />
+
+  <Satellites {look} {u} {materials} {primary} />
 </T.Group>

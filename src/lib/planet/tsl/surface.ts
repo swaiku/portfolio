@@ -76,11 +76,15 @@ export const createPlanetMaterial = (u: Uniforms, planetTex: Texture, cloudTex: 
     const detB = fbm(d.mul(52).add(vec3(4, 4, 4)), 4).mul(detFade).toVar();
     const lo = select(liquid, u.sea, float(-0.4));
     const t = h.sub(lo).div(0.95).add(moist.sub(0.5).mul(0.3)).add(detA.mul(0.2)).add(detB.mul(0.06)).toVar();
+    t.assign(mix(t, h.add(detA.mul(0.05)), u.gas)); // bands read straight off the ramp
     t.addAssign(u.strata.mul(0.16).mul(sin(h.mul(u.strataF).add(detA.mul(0.8)).mul(6.2832))));
 
     const grain = gnoise(d.mul(160)).mul(smoothstep(0.004, 0.0008, fpx));
-    const land = ramp(t)
-      .mul(float(1).sub(smoothstep(1.5, 6, length(sl)).mul(0.38)))
+    const stainA = smoothstep(0.38, 0.52, moist);
+    const stainB = smoothstep(0.62, 0.78, moist);
+    const stain = mix(mix(vec3(1, 1, 1), u.gasA, stainA), u.gasB, stainB);
+    const land = ramp(t).mul(mix(vec3(1, 1, 1), stain, u.gas.mul(0.9)))
+      .mul(float(1).sub(smoothstep(1.5, 6, length(sl)).mul(0.38).mul(float(1).sub(u.gas))))
       .mul(detB.mul(1.3).add(0.5).add(detA.mul(0.4)).mul(0.45).add(0.8).add(grain.mul(0.1)));
 
     const depth = max(u.sea.sub(h), 0);
@@ -96,7 +100,7 @@ export const createPlanetMaterial = (u: Uniforms, planetTex: Texture, cloudTex: 
 
     const albedo = mix(mix(liq, land, landM), iceCol, iceM).toVar();
     const oceanM = float(1).sub(landM).mul(float(1).sub(iceM));
-    const nUse = mix(n, N0, iceM.mul(float(1).sub(landM)));
+    const nUse = mix(mix(n, N0, iceM.mul(float(1).sub(landM))), N0, u.gas); // no relief on a gas giant
 
     // --- cloud shadow: sample the cloud shell along the sun ray ---
     const ndlG = dot(N0, L).toVar();

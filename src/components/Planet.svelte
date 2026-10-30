@@ -52,7 +52,7 @@
 {/if}
 
 <p class="planet-readout" aria-label="Planet telemetry">
-    alt {sim.alt} km · rot {sim.rot}°/s · seed {sim.seed} ·
+    alt {sim.alt} km · rot {sim.rot}°/s · seed {sim.seed} · {sim.rarity} ·
     <span class:live={sim.state === "LOCKED"}>{sim.state.toLowerCase()}</span>
 </p>
 
