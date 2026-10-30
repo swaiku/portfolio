@@ -81,6 +81,8 @@ a { color: inherit; text-underline-offset: 0.28em; text-decoration-thickness: 1p
   z-index: -1;
   pointer-events: none;
   background: linear-gradient(90deg, rgb(4 6 18 / 0.78), rgb(4 6 18 / 0) 62%);
+  /* feather the top and bottom so neighbouring sections blend instead of showing a seam */
+  mask-image: linear-gradient(180deg, transparent, #000 28%, #000 72%, transparent);
 }
 .stage.side-r::before { background: linear-gradient(270deg, rgb(4 6 18 / 0.78), rgb(4 6 18 / 0) 62%); }
 .stage.center::before { background: radial-gradient(60% 55% at 50% 55%, rgb(4 6 18 / 0.7), rgb(4 6 18 / 0)); }
