@@ -1,0 +1,123 @@
+---
+import Base from '../layouts/Base.astro';
+import Clock from '../components/Clock.svelte';
+import { site, flightPlan, payload, missions, offDuty } from '../data/site';
+---
+
+<Base
+  title="Swaiku · Jérémy, data science and robotics"
+  description="Personal site of Jérémy (Swaiku): Master's student in Data Science at HES-SO Fribourg, working on MLOps, UAV navigation and self-hosted infrastructure."
+>
+  <header class="topbar">
+    <a class="brand" href="#top"><i></i>swaiku</a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#briefing">Briefing</a>
+      <a href="#payload">Payload</a>
+      <a href="#missions">Missions</a>
+      <a href="#off-duty">Off duty</a>
+      <a class="keep" href="#transmission">Contact</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="stage side-l" data-stage="0.6,-0.04,0.9" data-stage-m="0,0.42,0.9">
+      <div class="stage-inner" style="width:min(100%,31rem)">
+        <h1 class="h-display reveal">{site.handle}</h1>
+        <p class="lede reveal" style="--i:1; margin-top:1.1rem">
+          <span class="text-ink">{site.name}.</span> {site.tagline}
+        </p>
+        <div class="reveal" style="--i:2; display:flex; flex-wrap:wrap; align-items:center; gap:14px 26px; margin-top:1.8rem">
+          <a class="btn" href="#briefing">Read the briefing</a>
+          <a class="link" href={site.github} rel="noopener">GitHub ↗</a>
+        </div>
+        <div class="facts reveal" style="--i:3">
+          <p class="meta" style="margin:0">{site.base} · <Clock client:idle tz={site.timezone} /> CET</p>
+          <p class="meta" style="margin:0">Now surveying <b data-planet-name>…</b></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="briefing" class="stage side-r" data-stage="-0.5,0.02,0.8" data-stage-m="0,0.5,0.7">
+      <div class="stage-inner">
+        <h2 class="h-section reveal">Mission briefing</h2>
+        <div class="prose">
+          <p class="reveal" style="--i:1">
+            I'm Jérémy, known as Swaiku. I studied Data Engineering at HEIA-FR and I'm now a Master's student in
+            Data Science at HES-SO in Fribourg, with a focus on MLOps and cloud systems.
+          </p>
+          <p class="reveal" style="--i:2">
+            Robots keep pulling me back in. I'm an alumnus of the Eurobot robotics competitions, and today I
+            research autonomous UAV navigation while running my own services on a Raspberry Pi 5 homelab.
+          </p>
+        </div>
+        <ol class="list tight reveal" style="--i:3; margin-top:1.8rem">
+          {flightPlan.map((s) => (
+            <li class="item-line">
+              <span class="item-title" style="margin:0">{s.title}</span>
+              <span class="meta"><span class:list={['when', { now: s.phase === 'now' }]}>{s.phase}</span> · {s.where}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+
+    <section id="payload" class="stage side-l" data-stage="0.74,-0.1,1.1" data-stage-m="0,0.5,0.7">
+      <div class="stage-inner">
+        <h2 class="h-section reveal">Payload modules</h2>
+        <p class="lede reveal" style="--i:1; margin-bottom:1.8rem">What I fly with, grouped the way I reach for it.</p>
+        <div class="list reveal" style="--i:2">
+          {payload.map((m) => (
+            <div>
+              <h3 class="item-title">{m.module}</h3>
+              <ul class="inline">{m.items.map((i) => <li>{i}</li>)}</ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="missions" class="stage side-r" data-stage="-0.78,0.1,1.75" data-stage-m="0,0.5,0.7">
+      <div class="stage-inner wide">
+        <h2 class="h-section reveal">Active missions</h2>
+        <div class="list reveal" style="--i:1; margin-top:1.6rem">
+          {missions.map((m) => (
+            <article class="mission">
+              <div class="item-line">
+                <h3 class="item-title">{m.name}</h3>
+                <span class="meta">{m.where}</span>
+              </div>
+              <p class="item-text">{m.brief}</p>
+              <ul class="inline">{m.tags.map((t) => <li>{t}</li>)}</ul>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="off-duty" class="stage side-l" data-stage="0.6,0.22,0.64" data-stage-m="0,0.5,0.7">
+      <div class="stage-inner">
+        <h2 class="h-section reveal">Off duty</h2>
+        <dl class="pairs reveal" style="--i:1; margin-top:1.6rem">
+          {offDuty.map((o) => (<><dt>{o.k}</dt><dd>{o.v}</dd></>))}
+        </dl>
+      </div>
+    </section>
+
+    <section id="transmission" class="stage center" data-stage="0,-2.7,2.2" data-stage-m="0,-1.5,2.0">
+      <div class="stage-inner" style="padding-bottom: 6vh">
+        <h2 class="h-section reveal">Transmission log</h2>
+        <p class="lede reveal" style="--i:1; margin-inline:auto">{site.status}. The easiest way to reach me is below.</p>
+        <div class="reveal" style="--i:2; display:flex; flex-wrap:wrap; align-items:center; gap:14px 26px; justify-content:center; margin-top:1.8rem">
+          {site.email && <a class="btn" href={`mailto:${site.email}`}>{site.email}</a>}
+          <a class:list={[site.email ? 'link' : 'btn']} href={site.github} rel="noopener">github.com/swaiku ↗</a>
+          {site.linkedin && <a class="link" href={site.linkedin} rel="noopener">LinkedIn ↗</a>}
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>Built with Astro, Svelte, Tailwind and Three.js. Every planet is procedural, generated in your browser from its seed.</span>
+    <button class="link" data-reseed type="button" style="background:none;border:0;padding:0;cursor:pointer">Survey a new world</button>
+  </footer>
+</Base>

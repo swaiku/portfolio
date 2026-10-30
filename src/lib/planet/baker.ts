@@ -1,0 +1,174 @@
+import {
+  ClampToEdgeWrapping, FloatType, HalfFloatType, LinearFilter, LinearMipmapLinearFilter, Mesh, NearestFilter,
+  OrthographicCamera, PlaneGeometry, RGBAFormat, RenderTarget, RepeatWrapping, Scene,
+} from 'three/webgpu';
+import { float } from 'three/tsl';
+import type { NodeMaterial, WebGPURenderer } from 'three/webgpu';
+import { randomSeed, rollWorld, type World } from './archetypes';
+import { applyWorld, type Uniforms, type WorldLook } from './uniforms';
+import {
+  createCloudDensityBake, createSkyBake, createSlopePass, createTerrainHeightBake, strip, terrainMoisture,
+} from './tsl/bake';
+
+interface Pass { material: NodeMaterial; target: RenderTarget; strips: number }
+
+const makeTarget = (w: number, h: number, kind: 'color' | 'color-nomip' | 'float') =>
+  new RenderTarget(w, h, {
+    type: kind === 'float' ? FloatType : HalfFloatType,
+    format: RGBAFormat,
+    minFilter: kind === 'color' ? LinearMipmapLinearFilter : kind === 'float' ? NearestFilter : LinearFilter,
+    magFilter: kind === 'float' ? NearestFilter : LinearFilter,
+    wrapS: RepeatWrapping,
+    wrapT: ClampToEdgeWrapping,
+    generateMipmaps: kind === 'color',
+    depthBuffer: false,
+  });
+
+/** Runs fullscreen passes into equirect targets, one strip per call, so no frame stalls on the GPU. */
+class Bake {
+  private readonly scene = new Scene();
+  private readonly camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  private readonly quad: Mesh;
+  private pass = 0;
+  private next = 0;
+  done = false;
+
+  constructor(private readonly renderer: WebGPURenderer, private readonly passes: Pass[]) {
+    this.quad = new Mesh(new PlaneGeometry(2, 2), passes[0].material);
+    this.quad.frustumCulled = false;
+    this.scene.add(this.quad);
+  }
+
+  /** The last pass holds the finished texture. */
+  get target() {
+    return this.passes[this.passes.length - 1].target;
+  }
+
+  restart() {
+    this.pass = 0;
+    this.next = 0;
+    this.done = false;
+  }
+
+  step() {
+    if (this.done) return;
+    const p = this.passes[this.pass];
+    this.quad.material = p.material;
+    strip.index.value = this.next;
+    strip.count.value = p.strips;
+    const autoClear = this.renderer.autoClear;
+    this.renderer.autoClear = this.next === 0; // clear once per pass, or each strip would wipe the previous ones
+    this.renderer.setRenderTarget(p.target);
+    this.renderer.render(this.scene, this.camera);
+    this.renderer.setRenderTarget(null);
+    this.renderer.autoClear = autoClear;
+    if (++this.next < p.strips) return;
+    this.next = 0;
+    if (++this.pass >= this.passes.length) {
+      this.done = true;
+      this.pass = 0;
+      // the float intermediates are only needed while baking; free them until the next reseed
+      this.passes.slice(0, -1).forEach((q) => q.target.dispose());
+    }
+  }
+
+  dispose() {
+    this.passes.forEach((p) => p.target.dispose());
+  }
+}
+
+export type Phase = 'sky' | 'planet' | 'clouds' | 'fadein' | 'live' | 'fadeout';
+
+/** Owns the baked textures and the life cycle of the current world: bake → fade in → live → fade out → next world. */
+export class WorldBaker {
+  readonly sky: Bake;
+  readonly planet: Bake;
+  readonly clouds: Bake;
+  phase: Phase = 'sky';
+  fade = 0;
+  world: World;
+  look: WorldLook;
+  private pending: World | null = null;
+  private readonly reduced: boolean;
+
+  constructor(
+    renderer: WebGPURenderer,
+    private readonly u: Uniforms,
+    private readonly onWorld: (w: World, look: WorldLook) => void,
+    opts: { texture: number; reduced: boolean },
+  ) {
+    const params = new URLSearchParams(location.search);
+    const seed = parseInt(params.get('planet') ?? '', 16);
+    this.world = rollWorld(Number.isFinite(seed) ? seed : randomSeed(), params.get('kind') ?? undefined);
+    this.reduced = opts.reduced;
+
+    const size = Number(params.get('bake')) || opts.texture; // ?bake=1024 is a dev knob for slow GPUs
+    const cloudSize = Math.min(size, 2048);
+    u.texW.value = size;
+    u.cloudW.value = cloudSize;
+    this.sky = new Bake(renderer, [
+      { material: createSkyBake(u.sky), target: makeTarget(2048, 1024, 'color-nomip'), strips: 4 },
+    ]);
+
+    // two passes each: the expensive noise once into float32, then a cheap pass that derives slopes from neighbours
+    const heights = makeTarget(size, size / 2, 'float');
+    this.planet = new Bake(renderer, [
+      { material: createTerrainHeightBake(u.terrain), target: heights, strips: size >= 4096 ? 32 : 16 },
+      {
+        material: createSlopePass(heights.texture, size, size / 2, terrainMoisture(u.terrain.seed)),
+        target: makeTarget(size, size / 2, 'color'),
+        strips: 8,
+      },
+    ]);
+    const density = makeTarget(cloudSize, cloudSize / 2, 'float');
+    this.clouds = new Bake(renderer, [
+      { material: createCloudDensityBake(u.terrain.seed), target: density, strips: 16 },
+      {
+        material: createSlopePass(density.texture, cloudSize, cloudSize / 2, () => float(1)),
+        target: makeTarget(cloudSize, cloudSize / 2, 'color'),
+        strips: 8,
+      },
+    ]);
+    this.look = applyWorld(u, this.world);
+    onWorld(this.world, this.look);
+  }
+
+  get state(): 'BOOT' | 'SURVEY' | 'LOCKED' {
+    if (this.phase === 'live') return 'LOCKED';
+    return this.phase === 'fadein' ? 'SURVEY' : 'BOOT';
+  }
+
+  step(dt: number) {
+    switch (this.phase) {
+      case 'sky': this.sky.step(); if (this.sky.done) this.phase = this.look.kind === 'planet' ? 'planet' : 'fadein'; break;
+      case 'planet': this.planet.step(); if (this.planet.done) this.phase = 'clouds'; break;
+      case 'clouds': this.clouds.step(); if (this.clouds.done) this.phase = 'fadein'; break;
+      case 'fadein':
+        this.fade = Math.min(1, this.fade + dt / (this.reduced ? 0.2 : 1.8));
+        if (this.fade >= 1) this.phase = 'live';
+        break;
+      case 'fadeout':
+        this.fade = Math.max(0, this.fade - dt / 0.5);
+        if (this.fade <= 0 && this.pending) {
+          this.world = this.pending;
+          this.pending = null;
+          this.look = applyWorld(this.u, this.world);
+          this.onWorld(this.world, this.look);
+          this.sky.restart(); this.planet.restart(); this.clouds.restart();
+          this.phase = 'sky';
+        }
+        break;
+    }
+    this.u.fade.value = this.fade * this.fade * (3 - 2 * this.fade);
+  }
+
+  reseed() {
+    if (this.phase !== 'live') return;
+    this.pending = rollWorld(randomSeed(), undefined, this.world.arch.id);
+    this.phase = 'fadeout';
+  }
+
+  dispose() {
+    [this.sky, this.planet, this.clouds].forEach((b) => b.dispose());
+  }
+}

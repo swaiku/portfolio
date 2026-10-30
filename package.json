@@ -1,0 +1,30 @@
+{
+  "name": "swaiku-website",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/svelte": "^9.1.2",
+    "@fontsource/chakra-petch": "^5.3.0",
+    "@fontsource/hanken-grotesk": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/martian-mono": "^5.3.0",
+    "@fontsource/unbounded": "^5.3.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@threlte/core": "^8.6.1",
+    "@threlte/extras": "^9.22.4",
+    "astro": "^7.4.4",
+    "svelte": "^5.57.3",
+    "svelte-tweakpane-ui": "^1.6.2",
+    "tailwindcss": "^4.3.3",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "typescript": "^7.0.2"
+  }
+}

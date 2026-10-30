@@ -1,0 +1,42 @@
+---
+import '../styles/global.css';
+import Planet from '../components/Planet.svelte';
+
+interface Props { title: string; description: string }
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#060818" />
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <script is:inline>
+      document.documentElement.dataset.js = '';
+    </script>
+  </head>
+  <body>
+    <Planet client:only="svelte" />
+    <slot />
+    <script>
+      const els = document.querySelectorAll<HTMLElement>('.reveal');
+      const io = new IntersectionObserver(
+        (entries) => entries.forEach((e) => e.isIntersecting && (e.target.classList.add('in'), io.unobserve(e.target))),
+        { rootMargin: '0px 0px -8% 0px', threshold: 0.12 },
+      );
+      els.forEach((el) => io.observe(el));
+      const showInfo = (d: { name: string; kind: string }) =>
+        document.querySelectorAll('[data-planet-name]').forEach((el) => (el.textContent = `${d.name} · ${d.kind}`));
+      addEventListener('planet:info', (e) => showInfo((e as CustomEvent).detail));
+      const early = (window as unknown as { __planet?: { name: string; kind: string } }).__planet;
+      if (early) showInfo(early);
+      document.querySelector('[data-reseed]')?.addEventListener('click', () => dispatchEvent(new Event('planet:reseed')));
+    </script>
+  </body>
+</html>
