@@ -212,11 +212,11 @@ export function rollWorld(seed: number, kind?: string, avoid?: string): World {
   const name = family === 'hole' ? base : `${base} ${pick(ROMAN)}`;
   const terrainSeed = new THREE.Vector3(r() * 40, r() * 40, r() * 40);
   // one in five worlds keeps its authored palette; the rest are rotated anywhere on the colour wheel
-  const hue = r() < 0.2 ? (r() - 0.5) * 0.08 : r() - 0.5;
+  const hue = family === 'hole' || r() < 0.2 ? (r() - 0.5) * 0.08 : r() - 0.5;
   const sat = (r() - 0.5) * 0.3;
   const ring = family === 'planet' && r() < 0.42 ? rollRing(r) : null;
   const tilt: [number, number] = family === 'hole'
-    ? [0.12 + r() * 0.3, (r() - 0.5) * 1.0]
+    ? [0.05 + r() * 0.13, (r() - 0.5) * 0.6]
     : [0.1 + r() * 0.5, (r() - 0.5) * 1.5];
   const activity = 0.4 + r() * 0.6;
 

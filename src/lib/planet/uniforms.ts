@@ -19,7 +19,7 @@ export const createUniforms = () => ({
   sea: uniform(0.1), hasLiq: uniform(0), strata: uniform(0), strataF: uniform(6), ice: uniform(0),
   glowAmt: uniform(0), glowDay: uniform(0), glowMode: uniform(0), cloudAmt: uniform(1), activity: uniform(0.7),
   br: v3(7.6, 17.8, 45), scatter: uniform(0.62),
-  hole: { exposure: uniform(1.1), doppler: uniform(0.75), diskIn: uniform(0.2), diskOut: uniform(0.52), ring: uniform(0.45) },
+  hole: { exposure: uniform(1.3), doppler: uniform(0.75), diskIn: uniform(0.2), diskOut: uniform(0.6), ring: uniform(1) },
   terrain: createTerrainUniforms(),
   sky: createSkyUniforms(),
 });
@@ -65,7 +65,7 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
   }
   if (w.kind === 'hole') {
     look.sizeK = 1.9;
-    look.shiftX = -0.08; // pull it in so the disk is not cropped by the edge of the screen
+    look.shiftX = -0.16; // pull it in so the disk is not cropped by the edge of the screen
     return look;
   }
 

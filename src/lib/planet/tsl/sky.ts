@@ -10,13 +10,13 @@ import { dirToUv } from './common';
 const rand = (cell: Node, salt: number) => mx_cell_noise_float(cell.add(vec3(salt, salt * 1.7, salt * 2.3)));
 
 /** One layer of procedural stars: a jittered point per grid cell on the sphere, sized to the pixel footprint. */
-const starLayer = (dir: Node, footprint: Node, clock: Node, scale: number, density: number, salt: number) => {
-  const p = dir.mul(scale);
+const starLayer = (dir: Node, footprint: Node, clock: Node, seed: Node, scale: number, density: number, salt: number) => {
+  const p = dir.mul(scale).add(seed.mul(7.31)); // the world's seed shifts the grid, so every world gets its own star field
   const cell = floor(p);
   const f = fract(p);
   const centre = vec3(rand(cell, salt + 1), rand(cell, salt + 2), rand(cell, salt + 3)).mul(0.7).add(0.15);
   const present = step(1 - density, rand(cell, salt));
-  const radius = max(footprint.mul(scale).mul(0.75), 0.02);
+  const radius = max(footprint.mul(scale).mul(1.65), 0.045);
   const core = smoothstep(radius, 0, length(f.sub(centre)));
   const luma = pow(rand(cell, salt + 4), 5).mul(1.6).add(0.25);
   const tint = mix(vec3(0.72, 0.85, 1), vec3(1, 0.82, 0.62), rand(cell, salt + 5));
@@ -25,11 +25,11 @@ const starLayer = (dir: Node, footprint: Node, clock: Node, scale: number, densi
 };
 
 /** Nebula + stars along a direction. Shared by the dome and by the black hole's lensed view of it. */
-export const skyColor = (skyTex: Texture, clock: Node, dir: Node, footprint: Node, starGain: Node = float(1)): Node => {
+export const skyColor = (skyTex: Texture, clock: Node, seed: Node, dir: Node, footprint: Node, starGain: Node = float(1)): Node => {
   const nebula = texture(skyTex, dirToUv(dir)).level(0).rgb;
-  const stars = starLayer(dir, footprint, clock, 70, 0.05, 11)
-    .add(starLayer(dir, footprint, clock, 150, 0.07, 31))
-    .add(starLayer(dir, footprint, clock, 320, 0.09, 53));
+  const stars = starLayer(dir, footprint, clock, seed, 70, 0.15, 11)
+    .add(starLayer(dir, footprint, clock, seed, 150, 0.21, 31))
+    .add(starLayer(dir, footprint, clock, seed, 320, 0.27, 53));
   return nebula.add(stars.mul(starGain));
 };
 
@@ -43,7 +43,7 @@ export const createSkyMaterial = (skyTex: Texture, u: Uniforms) => {
     const dir = normalize(positionLocal);
     const footprint = max(length(dFdx(dir)), length(dFdy(dir)));
     const dither = fract(sin(abs(dir.x.add(dir.y.mul(57)).add(dir.z.mul(113))).mul(91731)).mul(43758.5)).sub(0.5).div(255);
-    return vec4(clamp(skyColor(skyTex, u.clock, dir, footprint).add(dither), 0, 4), 1);
+    return vec4(clamp(skyColor(skyTex, u.clock, u.sky.seed, dir, footprint).add(dither), 0, 4), 1);
   })();
   return m;
 };
