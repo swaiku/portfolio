@@ -8,9 +8,9 @@ export interface Stage { x: number; y: number; s: number }
 /**
  * Reads `data-stage="x,y,scale"` off the page sections and scrubs the pose between them with the scroll position.
  *
- * Each section holds its pose through the middle of its scroll range and eases into the next one in the gap, so the body
- * glides along with the page instead of snapping to a new target when a section crosses the viewport. `scrub` adds a
- * short catch-up, which also smooths out the steps of a mouse wheel.
+ * The pose eases from one section to the next across the whole scroll gap between them, so the body glides along with
+ * the page instead of snapping to a new target when a section crosses the viewport. `scrub` adds a catch-up, which also
+ * smooths out the steps of a mouse wheel.
  */
 export function trackStages() {
   const target: Stage = { x: 0.5, y: 0, s: 0.9 };
@@ -50,15 +50,15 @@ export function trackStages() {
     }
 
     timeline = gsap.timeline({
-      defaults: { ease: 'power2.inOut' },
-      scrollTrigger: { trigger: document.body, start: 'top top', end: 'bottom bottom', scrub: 1.1, invalidateOnRefresh: true },
+      defaults: { ease: 'sine.inOut' },
+      scrollTrigger: { trigger: document.body, start: 'top top', end: 'bottom bottom', scrub: 1.8, invalidateOnRefresh: true },
     });
     timeline.to(state, { scroll: 1, ease: 'none', duration: 1 }, 0);
     for (let i = 0; i < sections.length - 1; i++) {
       const gap = at[i + 1] - at[i];
       if (gap <= 0) continue;
-      // hold the first quarter of the gap, travel over the middle half, settle in the last quarter
-      timeline.to(target, { ...poses[i + 1], duration: gap * 0.6 }, at[i] + gap * 0.2);
+      // travel across nearly the whole gap with a gentle ease, so there is always something moving gently and nothing snaps
+      timeline.to(target, { ...poses[i + 1], ease: 'sine.inOut', duration: gap * 0.92 }, at[i] + gap * 0.04);
     }
     timeline.set({}, {}, 1); // pad to the full page so positions are scroll fractions
   };
