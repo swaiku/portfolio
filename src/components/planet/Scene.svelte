@@ -20,7 +20,7 @@
   const CAMERA_Z = 10;
   const SUN = new Vector3(-0.92, 0.3, 0.18).normalize();
 
-  const { renderer, size } = useThrelte();
+  const { renderer, size, advance, dpr } = useThrelte();
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const coarse = matchMedia('(pointer: coarse)').matches || innerWidth < 760;
 
@@ -68,9 +68,39 @@
   const stages = trackStages();
   const cur = { x: 0.5, y: 0, s: 0.9 };
   const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
+  // the scene only moves slowly on its own, so it renders at 30 fps when nobody is interacting and at 60 fps otherwise
+  let lastInput = -Infinity;
+  const poke = () => (lastInput = performance.now());
   const onMove = (e: PointerEvent) => {
     pointer.tx = (e.clientX / innerWidth - 0.5) * 2;
     pointer.ty = (e.clientY / innerHeight - 0.5) * 2;
+    poke();
+  };
+
+  // frame governor: caps the frame rate and lowers the render resolution when the GPU can't keep up
+  const MIN_DPR = 0.75;
+  let sinceRender = 0;
+  let lastRender = 0;
+  let slowSum = 0;
+  let slowCount = 0;
+  const govern = (dt: number) => {
+    const now = performance.now();
+    const active = now - lastInput < 2500 || baker.phase === 'fadein' || baker.phase === 'fadeout';
+    const interval = active ? 1 / 60 : 1 / 30;
+    sinceRender += dt;
+    if (sinceRender < interval - 0.002) return;
+    sinceRender = Math.min(Math.max(sinceRender - interval, 0), interval);
+    advance();
+
+    // measure only while the world is live: baking stalls frames on purpose, and a hidden tab pauses them
+    const gap = (now - lastRender) / 1000;
+    lastRender = now;
+    if (baker.phase !== 'live' || gap > 0.25) return;
+    slowSum += gap / interval;
+    if (++slowCount < 45) return;
+    if (slowSum / slowCount > 1.3 && dpr.current > MIN_DPR) dpr.set(Math.max(MIN_DPR, dpr.current - 0.25));
+    slowSum = 0;
+    slowCount = 0;
   };
 
   let angle = 0;
@@ -93,6 +123,7 @@
 
   useTask((dt) => {
     dt = Math.min(dt, 0.1);
+    govern(dt);
     baker.step(dt);
     if (baker.baked !== baked) baked = baker.baked;
 
@@ -164,10 +195,16 @@
   const reseed = () => baker.reseed();
   onMount(() => {
     addEventListener('pointermove', onMove, { passive: true });
+    addEventListener('scroll', poke, { passive: true });
+    addEventListener('wheel', poke, { passive: true });
+    addEventListener('touchmove', poke, { passive: true });
     addEventListener('planet:reseed', reseed);
     stages.refresh();
     return () => {
       removeEventListener('pointermove', onMove);
+      removeEventListener('scroll', poke);
+      removeEventListener('wheel', poke);
+      removeEventListener('touchmove', poke);
       removeEventListener('planet:reseed', reseed);
       stages.dispose();
       baker.dispose();

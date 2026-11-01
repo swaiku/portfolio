@@ -36,8 +36,8 @@
     {#if backend !== "pending"}
         <Canvas
             {createRenderer}
-            renderMode="always"
-            dpr={[1, 2]}
+            renderMode="manual"
+            dpr={[1, 1.5]}
             toneMapping={NoToneMapping}
             shadows={false}
         >
