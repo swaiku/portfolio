@@ -237,6 +237,7 @@ export interface Companion {
   incline: number;
   period: number; // its own spin, for a pulsar companion
   tilt: number;
+  temp: number; // surface temperature in kelvin, which sets its colour
 }
 
 export interface Moon {
@@ -287,6 +288,7 @@ export interface World {
   nebula: number; // nebulae: which shape, see NEBULA_SHAPES
   period: number; // pulsars: real rotation period in seconds, 1.4 ms to 75.9 s like the known extremes
   accent: string;
+  temp: number; // stars: surface temperature in kelvin, which sets the colour; 0 for everything else
   light: number; // lightness shift of the whole palette
   variance: Variance;
 }
@@ -373,7 +375,7 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
     if (Math.abs(gap) < 0.15) hue = (hue + (gap < 0 ? -0.15 : 0.15) - gap + 2) % 1;
   }
   const kindRoll = r();
-  const scheme = kindRoll < 0.14 ? [hue, hue + 0.07, hue - 0.07]
+  let scheme = kindRoll < 0.14 ? [hue, hue + 0.07, hue - 0.07]
     : kindRoll < 0.28 ? [hue, hue + 0.5, hue + 0.5 + (r() - 0.5) * 0.1]
     : kindRoll < 0.42 ? [hue, hue + 1 / 3, hue + 2 / 3]
     : kindRoll < 0.54 ? [hue, hue + 0.42, hue + 0.58]
@@ -381,8 +383,8 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
     : kindRoll < 0.74 ? [hue, hue + 0.16, hue + 0.5] // two close hues and their opposite
     : [hue, r(), r()];
   if (r() < 0.5) [scheme[1], scheme[2]] = [scheme[2], scheme[1]];
-  const sat = (r() - 0.5) * 0.8;
-  const drift = (r() - 0.5) * 0.26;
+  let sat = (r() - 0.5) * 0.8;
+  let drift = (r() - 0.5) * 0.26;
   const ring = family === 'planet' && !type.belt && (type.ring || r() < (arch?.gas ? 0.6 : 0.42)) ? rollRing(r, pick(scheme)) : null;
   const tilt: [number, number] = family === 'hole'
     ? [0.05 + r() * 0.13, (r() - 0.5) * 0.6]
@@ -406,7 +408,7 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
     const cid = type.pool[Math.floor(r() * type.pool.length)];
     const ctpl = TEMPLATES.find((t) => t.id === cid)!;
     companion = {
-      q, tpl: ctpl, d: 3 + r() * 0.8, role: 1 + Math.floor(r() * 2), phase: r() * Math.PI * 2, incline: (r() - 0.5) * 0.5,
+      q, tpl: ctpl, d: 3 + r() * 0.8, role: 1 + Math.floor(r() * 2), phase: r() * Math.PI * 2, incline: (r() - 0.5) * 0.5, temp: 0,
       period: pulsarPeriod(r(), r()), tilt: 0.45 + r() * 0.7,
     };
   }
@@ -455,10 +457,10 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
   const belt = type.belt ? { inner, outer: inner + 0.5 + r() * 0.7, seed: Math.floor(r() * 1e6) } : null;
 
   // UI accent follows the rolled palette; bright enough to read on the dark page
-  const accent = hsl(hue, 0.8, 0.62);
+  let accent = hsl(hue, 0.8, 0.62);
 
   // rolled after everything else, so a seed keeps its other traits
-  const light = (r() - 0.5) * 0.2;
+  let light = (r() - 0.5) * 0.2;
   const range = (a: number, b: number) => a + r() * (b - a);
   const variance: Variance = {
     cfreq: range(0.6, 1.6), amp: range(0.55, 1.6), strata: range(0.5, 1.15), strataF: range(0.75, 1.15),
@@ -466,8 +468,52 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
     sea: range(-0.08, 0.1), terrace: r() < 0.18 ? 0 : range(0.6, 1.5) , bands: range(0.7, 1.35), swirl: range(0.5, 1.7),
   };
 
-  return { seed, name, kind: family, type, tpl, arch, moons, belt, terrainSeed, hue, scheme, sat, drift, ring, tilt, activity, size, companion, nebula, period, spots: type.jets ? 0 : spots, storms: type.jets ? 0 : storms, beamTilt, accent, light, variance };
+  // A star's colour is its temperature, as in the sky: red dwarfs, orange and yellow suns, white and blue-white stars, hot blue
+  // giants and neutron stars. Rolled last, so nothing else about a seed moves.
+  const temp = family === 'star' ? starTemp(tpl.id, r) : 0;
+  if (companion) companion.temp = starTemp(companion.tpl.id, r);
+  if (temp) {
+    ({ scheme, sat, drift } = starScheme(temp));
+    light = 0;
+    accent = hsl(blackbody(temp)[0], 0.75, 0.62);
+  }
+
+  return { seed, name, kind: family, type, tpl, arch, moons, belt, terrainSeed, hue, scheme, sat, drift, ring, tilt, activity, size, companion, nebula, period, spots: type.jets ? 0 : spots, storms: type.jets ? 0 : storms, beamTilt, accent, temp, light, variance };
 }
+
+/**
+ * Hue and saturation of a star at `k` kelvin. Real stars run red, orange, yellow, white, pale blue, blue; a straight black-body
+ * fit crowds everything below 6000 K into the same orange, so the warm end is stretched to keep red dwarfs, amber dwarfs and
+ * yellow suns apart. White sits between the two ends, where the hue jumps and the saturation dips.
+ */
+export const blackbody = (k: number): [number, number] => {
+  const warm: [number, number, number][] = [[2500, 0.0, 1], [3200, 0.03, 1], [4000, 0.065, 1], [5000, 0.1, 1], [5800, 0.135, 0.95], [6800, 0.15, 0.5]];
+  const cool: [number, number, number][] = [[6800, 0.58, 0.45], [8500, 0.58, 0.7], [12000, 0.6, 0.9], [20000, 0.63, 1], [40000, 0.67, 1]];
+  const pts = k <= 6800 ? warm : cool;
+  const found = pts.findIndex((p) => p[0] >= k);
+  const i = found < 1 ? (found === 0 ? 1 : pts.length - 1) : found;
+  const [a, b] = [pts[i - 1], pts[i]];
+  const f = Math.min(1, Math.max(0, (k - a[0]) / (b[0] - a[0])));
+  return [a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+};
+
+/** What `paint` needs to draw a star of this temperature: one hue, steadily saturated. */
+export const starScheme = (temp: number) => {
+  const [h, s] = blackbody(temp);
+  return { scheme: [h, h + 0.03, h - 0.03], sat: s - 1, drift: 0.01 };
+};
+
+/** Surface temperature rolled log-uniform inside each class. */
+export const starTemp = (id: string, r: () => number) => {
+  const between = (a: number, b: number) => Math.round(Math.exp(Math.log(a) + r() * (Math.log(b) - Math.log(a))) / 10) * 10;
+  switch (id) {
+    case 'dwarf': return between(2500, 4200);
+    case 'giant': return r() < 0.7 ? between(3000, 5200) : between(9000, 24000); // mostly red and orange, now and then a blue giant
+    case 'magnetar': return between(12000, 30000);
+    case 'pulsar': return between(14000, 40000);
+    default: return between(4800, 10500);
+  }
+};
 
 /** Which of the world's scheme hues a colour takes. */
 export const Role = { ground: 0, liquid: 1, air: 2 } as const;

@@ -1,6 +1,6 @@
 import { Color, Matrix3, Vector2, Vector3 } from 'three';
 import { uniform } from 'three/tsl';
-import { paint, pulsarSpin, Role, type Kind, type Moon, type World } from './archetypes';
+import { paint, pulsarSpin, Role, starScheme, type Kind, type Moon, type World } from './archetypes';
 import { createSkyUniforms, createTerrainUniforms } from './tsl/bake';
 
 const v3 = (x = 0, y = x, z = x) => uniform(new Vector3(x, y, z));
@@ -108,7 +108,7 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
       look.companion = {
         radius, r1, r2, phase: c.phase, incline: c.incline, tilt: c.tilt,
         omega: 0.16 * Math.sqrt((1 + c.q) / 2) * Math.pow(3.1 / d, 1.5), // Kepler: a heavier pair circles faster, a wider one slower
-        ramp: c.tpl.ramp.map((tone, i) => color(c.role, tone, i - 2)),
+        ramp: c.tpl.ramp.map((tone, i) => (c.temp ? paint({ ...starScheme(c.temp), light: 0 }) : color)(c.role, tone, i - 2)),
         pulsar: !!w.type.jets,
         spin: pulsarSpin(c.period),
       };
@@ -152,7 +152,8 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
   u.terrain.ridge.value = clamp(t.ridge + v.ridge, 0, 1);
   u.terrain.warp.value = Math.max(0, t.warp + v.warp);
   // a flat template may gain terraces; a terraced one keeps its steps or loses them
-  u.terrain.terrace.value = t.terrace ? Math.round(t.terrace * v.terrace) : v.terrace > 1.35 && !a.gas ? 5 : 0;
+  const terrace = t.terrace ? Math.round(t.terrace * v.terrace) : v.terrace > 1.35 && !a.gas ? 5 : 0;
+  u.terrain.terrace.value = terrace;
   u.terrain.dry.value = t.dry ? 1 : 0;
   u.terrain.bands.value = (a.gas?.bands ?? 0) * v.bands;
   u.terrain.swirl.value = (a.gas?.swirl ?? 0) * v.swirl;
@@ -167,7 +168,7 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
   u.liqDeep.value = a.liquid ? color(Role.liquid, a.liquid.deep) : new Vector3();
   u.liqShallow.value = a.liquid ? color(Role.liquid, a.liquid.shallow, 1) : new Vector3();
   // terraces already cut the ground into layers: strata on top of them would turn into a busy, pixelated weave
-  const stepped = u.terrain.terrace.value > 0;
+  const stepped = terrace > 0;
   u.strata.value = clamp(a.strata * v.strata * (stepped ? 0.6 : 1), 0, 0.9);
   u.strataF.value = a.strataF * v.strataF * (stepped ? 0.8 : 1);
   u.ice.value = clamp((a.ice?.amount ?? 0) * v.ice, 0, 1);

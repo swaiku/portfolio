@@ -105,17 +105,16 @@ export function describe(w: World): Fact[] {
     add('Magnetic field', `${power(10 ** (magnetar ? lerp(r(), [14, 15.3]) : lerp(r(), [8, 12])))} gauss`);
     if (w.companion) add('Companion', `a second neutron star, ${(w.companion.q * 100).toFixed(0)}% of the mass`);
   } else if (w.kind === 'star') {
-    const [m, rad, k, fuel]: [[number, number], [number, number], [number, number], string] =
-      id === 'dwarf' ? [[0.1, 0.6], [0.12, 0.65], [2800, 4000], 'Hydrogen']
-        : id === 'giant' ? [[1, 8], [10, 200], [3500, 5000], 'Helium, then carbon']
-          : [[0.8, 1.6], [0.9, 1.8], [5200, 7500], 'Hydrogen'];
-    const mass = lerp(r(), m);
+    const giant = id === 'giant';
+    const temp = w.temp;
+    // a main-sequence star's mass follows from its temperature (roughly L ∝ M³·⁵, T ∝ M⁰·⁵); a giant has left that line
+    const mass = giant ? lerp(r(), temp > 8000 ? [8, 20] : [1, 8]) : (temp / 5772) ** 2;
+    const radius = giant ? (temp > 8000 ? lerp(r(), [10, 40]) : lerp(r(), [10, 200])) : mass ** 0.8 * lerp(r(), [0.9, 1.1]);
     add('Mass', `${mass.toFixed(2)} Suns`);
-    add('Radius', `${rad[1] > 100 ? group(lerp(r(), rad)) : lerp(r(), rad).toFixed(2)} Suns`);
-    const temp = Math.round(lerp(r(), k) / 10) * 10;
+    add('Radius', `${radius >= 100 ? group(radius) : radius.toFixed(2)} Suns`);
     add('Surface', `${group(temp)} K, class ${spectral(temp)}`);
-    add('Fuel', fuel);
-    if (w.companion) add('Companion', `a second star, ${(w.companion.q * 100).toFixed(0)}% of the mass`);
+    add('Fuel', giant ? 'Helium, then carbon' : 'Hydrogen');
+    if (w.companion) add('Companion', `a second star, ${group(w.companion.temp)} K, ${(w.companion.q * 100).toFixed(0)}% of the mass`);
   } else if (w.kind === 'hole') {
     // a quasar's engine is supermassive; the other two are the remnants of single stars
     const mass = id === 'quasar' ? 10 ** lerp(r(), [6, 9.4]) : lerp(r(), [id === 'cold' ? 8 : 3, id === 'cold' ? 60 : 20]);
