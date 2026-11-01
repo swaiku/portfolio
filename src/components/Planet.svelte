@@ -3,7 +3,6 @@
     import { Canvas } from "@threlte/core/webgpu";
     import { NoToneMapping, WebGPURenderer } from "three/webgpu";
     import Scene from "./planet/Scene.svelte";
-    import { sim } from "../lib/planet/sim.svelte";
     import { createUniforms } from "../lib/planet/uniforms";
 
     const u = createUniforms();
@@ -52,10 +51,6 @@
     {/await}
 {/if}
 
-<p class="planet-readout" aria-label="Planet telemetry">
-    alt {sim.alt} km · rot {sim.rot}°/s · seed {sim.seed} · {sim.rarity} ·
-    <span class:live={sim.state === "LOCKED"}>{sim.state.toLowerCase()}</span>
-</p>
 
 <style>
     .planet-host {
@@ -83,25 +78,5 @@
     }
     :global(html[data-gl="off"]) .planet-fallback {
         display: block;
-    }
-
-    .planet-readout {
-        position: fixed;
-        right: 20px;
-        bottom: 16px;
-        z-index: 5;
-        margin: 0;
-        font: 400 0.7rem/1.4 var(--font-mono);
-        font-variant-numeric: tabular-nums;
-        color: var(--color-dim);
-        pointer-events: none;
-    }
-    .planet-readout .live {
-        color: var(--color-amber);
-    }
-    @media (max-width: 760px) {
-        .planet-readout {
-            display: none;
-        }
     }
 </style>

@@ -1,0 +1,116 @@
+import { mulberry, NEBULA_SHAPES, type World } from './archetypes';
+
+export interface Fact { k: string; v: string }
+
+const EARTH_KM = 6371;
+const JUPITER_M = 317.8; // in Earth masses
+
+interface Rock { density: [number, number]; atmo: string; bar: [number, number]; ores: string[] }
+
+/** What each ground template is made of. Densities are in g/cm³ (Earth 5.51), pressure in bar. */
+const ROCK: Record<string, Rock> = {
+  ember: { density: [4.6, 5.6], atmo: 'SO₂ · CO₂', bar: [8, 60], ores: ['Nickel-iron', 'Olivine', 'Sulfides'] },
+  saltglass: { density: [3.2, 4.4], atmo: 'N₂ · CO₂', bar: [0.3, 1.5], ores: ['Halite', 'Lithium brine', 'Borates'] },
+  verdigris: { density: [4.2, 5.4], atmo: 'N₂ · O₂ · Ar', bar: [0.6, 2], ores: ['Copper', 'Malachite', 'Zinc'] },
+  cobalt: { density: [3.6, 5], atmo: 'CO₂ · N₂ · Ar', bar: [0.2, 1.2], ores: ['Cobalt', 'Silica sand', 'Nickel'] },
+  sulfur: { density: [3.4, 4.6], atmo: 'SO₂ · N₂', bar: [0.8, 4], ores: ['Native sulfur', 'Pyrite', 'Gypsum'] },
+  frostbloom: { density: [2.4, 3.6], atmo: 'N₂ · CH₄', bar: [0.4, 2.5], ores: ['Water ice', 'Methane clathrate', 'Ammonia ice'] },
+  orchid: { density: [3, 4.2], atmo: 'N₂ · O₂ · H₂O', bar: [0.8, 3], ores: ['Lithium', 'Rare earths', 'Phosphates'] },
+  rust: { density: [3.8, 5], atmo: 'CO₂ · N₂ · Ar', bar: [0.05, 0.8], ores: ['Hematite', 'Iron', 'Manganese'] },
+  obsidian: { density: [3.4, 4.8], atmo: 'CO₂ · SO₂', bar: [0.5, 5], ores: ['Silica glass', 'Titanium', 'Tungsten'] },
+  cinder: { density: [4.8, 5.7], atmo: '', bar: [0, 0], ores: ['Graphite', 'Iron', 'Platinum group'] },
+};
+
+interface Gas { radius: [number, number]; density: [number, number]; ores: string[] }
+
+const GAS: Record<string, Gas> = {
+  jovian: { radius: [8, 12], density: [0.9, 1.5], ores: ['Helium-3', 'Hydrogen'] },
+  ammonia: { radius: [3, 5], density: [1.2, 1.9], ores: ['Ammonia', 'Methane'] },
+  tempest: { radius: [6, 10], density: [0.8, 1.4], ores: ['Helium-3', 'Hydrogen'] },
+};
+
+const group = (n: number, digits = 0) => n.toLocaleString('en-US', { maximumFractionDigits: digits });
+const sig = (n: number) => (n >= 100 ? group(n) : n >= 10 ? n.toFixed(1) : n.toFixed(2));
+const sup = (n: number) => String(n).replace(/-/g, '⁻').replace(/\d/g, (d) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[+d]);
+const power = (n: number) => {
+  const e = Math.floor(Math.log10(n));
+  return `${(n / 10 ** e).toFixed(1)} × 10${sup(e)}`;
+};
+const lerp = (r: number, [a, b]: [number, number]) => a + (b - a) * r;
+const hours = (h: number) => (h > 48 ? `${(h / 24).toFixed(1)} days` : `${h.toFixed(1)} h`);
+
+const spectral = (k: number) => (k >= 30000 ? 'O' : k >= 10000 ? 'B' : k >= 7500 ? 'A' : k >= 6000 ? 'F' : k >= 5200 ? 'G' : k >= 3700 ? 'K' : 'M');
+
+const period = (s: number) => (s < 0.01 ? `${(s * 1000).toFixed(2)} ms` : s < 1 ? `${(s * 1000).toFixed(0)} ms` : `${s.toFixed(2)} s`);
+
+/**
+ * The numbers behind a world, rolled from its seed on a separate stream so nothing that is drawn depends on them.
+ * Real physics where it is cheap (mass from radius and density, surface gravity, Schwarzschild radius); the rest is
+ * plausible and consistent, not a simulation.
+ */
+export function describe(w: World): Fact[] {
+  const r = mulberry((w.seed ^ 0x9e3779b1) >>> 0);
+  const facts: Fact[] = [];
+  const add = (k: string, v: string) => facts.push({ k, v });
+  const id = w.tpl.id;
+
+  if (w.kind === 'planet') {
+    const gas = GAS[id];
+    const rock = ROCK[id];
+    const radius = gas ? lerp(r(), gas.radius) * w.size : (0.4 + r() * 1.4) * w.size; // Earth radii
+    const density = lerp(r(), (gas ?? rock).density);
+    const mass = (density / 5.51) * radius ** 3; // Earth masses
+    const g = (9.81 * mass) / radius ** 2;
+    add('Radius', `${group(radius * EARTH_KM)} km`);
+    add('Mass', mass >= 60 ? `${(mass / JUPITER_M).toFixed(2)} Jupiters` : `${mass.toFixed(2)} Earths`);
+    add('Gravity', `${g.toFixed(1)} m/s²${gas ? ' at the cloud tops' : ''}`);
+    if (gas) {
+      const he = lerp(r(), [8, 13]);
+      const trace = lerp(r(), [0.2, 2.5]);
+      const third = id === 'ammonia' ? 'NH₃' : id === 'tempest' ? 'H₂O' : 'CH₄';
+      add('Atmosphere', `H₂ ${(100 - he - trace).toFixed(0)}% · He ${he.toFixed(0)}% · ${third} ${trace.toFixed(1)}%`);
+      add('Main resource', gas.ores[Math.floor(r() * gas.ores.length)]);
+      add('Day', hours(lerp(r(), [8, 20])));
+    } else {
+      add('Atmosphere', rock.bar[1] ? `${rock.atmo} · ${sig(lerp(r(), rock.bar))} bar` : 'None, a trace of argon');
+      add('Main resource', rock.ores[Math.floor(r() * rock.ores.length)]);
+      add('Day', hours(10 ** lerp(r(), [0.8, 1.9])));
+    }
+  } else if (w.kind === 'star' && w.type.jets) {
+    const magnetar = id === 'magnetar';
+    add('Mass', `${lerp(r(), [1.2, 2.1]).toFixed(2)} Suns`);
+    add('Radius', `${lerp(r(), [10, 13]).toFixed(1)} km`);
+    add('Spin', `one turn in ${period(w.period)}`);
+    add('Magnetic field', `${power(10 ** (magnetar ? lerp(r(), [14, 15.3]) : lerp(r(), [8, 12])))} gauss`);
+    if (w.companion) add('Companion', `a second neutron star, ${(w.companion.q * 100).toFixed(0)}% of the mass`);
+  } else if (w.kind === 'star') {
+    const [m, rad, k, fuel]: [[number, number], [number, number], [number, number], string] =
+      id === 'dwarf' ? [[0.1, 0.6], [0.12, 0.65], [2800, 4000], 'Hydrogen']
+        : id === 'giant' ? [[1, 8], [10, 200], [3500, 5000], 'Helium, then carbon']
+          : [[0.8, 1.6], [0.9, 1.8], [5200, 7500], 'Hydrogen'];
+    const mass = lerp(r(), m);
+    add('Mass', `${mass.toFixed(2)} Suns`);
+    add('Radius', `${rad[1] > 100 ? group(lerp(r(), rad)) : lerp(r(), rad).toFixed(2)} Suns`);
+    const temp = Math.round(lerp(r(), k) / 10) * 10;
+    add('Surface', `${group(temp)} K, class ${spectral(temp)}`);
+    add('Fuel', fuel);
+    if (w.companion) add('Companion', `a second star, ${(w.companion.q * 100).toFixed(0)}% of the mass`);
+  } else if (w.kind === 'hole') {
+    // a quasar's engine is supermassive; the other two are the remnants of single stars
+    const mass = id === 'quasar' ? 10 ** lerp(r(), [6, 9.4]) : lerp(r(), [id === 'cold' ? 8 : 3, id === 'cold' ? 60 : 20]);
+    const km = 2.953 * mass;
+    add('Mass', `${mass >= 1e5 ? power(mass) : mass.toFixed(1)} Suns`);
+    add('Event horizon', km > 1.5e8 ? `${(km / 1.496e8).toFixed(1)} AU across` : `${group(km)} km in radius`);
+    add('Surroundings', id === 'quasar' ? 'a bright accretion disk and twin jets' : id === 'cold' ? 'dark, with a faint disk' : 'a thin disk of hot gas');
+  } else if (w.kind === 'comet') {
+    add('Nucleus', `${lerp(r(), [0.6, 18]).toFixed(1)} km across`);
+    add('Mass', `${power(10 ** lerp(r(), [12, 15.5]))} kg`);
+    add('Composition', 'H₂O ice · CO₂ · dust');
+    add('Main resource', 'Water ice');
+  } else {
+    add('Shape', NEBULA_SHAPES[w.nebula]);
+  }
+  add('Seed', w.seed.toString(16).toUpperCase().padStart(6, '0'));
+  return facts;
+}
+

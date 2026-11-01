@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import Clock from '../components/Clock.svelte';
+import Survey from '../components/Survey.svelte';
 import { site, flightPlan, payload, missions, offDuty } from '../data/site';
 ---
 
@@ -32,8 +33,8 @@ import { site, flightPlan, payload, missions, offDuty } from '../data/site';
         </div>
         <div class="facts reveal" style="--i:3">
           <p class="meta" style="margin:0">{site.base} · <Clock client:idle tz={site.timezone} /> CET</p>
-          <p class="meta" style="margin:0">Now surveying <b data-planet-name>…</b></p>
         </div>
+        <Survey client:only="svelte" />
       </div>
     </section>
 

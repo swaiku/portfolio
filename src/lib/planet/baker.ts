@@ -45,6 +45,14 @@ class Bake {
     return this.passes[this.passes.length - 1].target;
   }
 
+  /** Share of this bake's strips already drawn, 0 → 1. */
+  get progress() {
+    if (this.done) return 1;
+    const total = this.passes.reduce((n, p) => n + p.strips, 0);
+    const before = this.passes.slice(0, this.pass).reduce((n, p) => n + p.strips, 0);
+    return (before + this.next) / total;
+  }
+
   restart() {
     this.pass = 0;
     this.next = 0;
@@ -157,6 +165,19 @@ export class WorldBaker {
   get state(): 'BOOT' | 'SURVEY' | 'LOCKED' {
     if (this.phase === 'live') return 'LOCKED';
     return this.phase === 'fadein' ? 'SURVEY' : 'BOOT';
+  }
+
+  /** How far the current world is from being drawn, 0 → 1; the bakes weigh in roughly as long as they take. */
+  get progress() {
+    const flat = this.look.kind !== 'planet' && this.look.kind !== 'nebula'; // stars and holes bake only the sky
+    switch (this.phase) {
+      case 'sky': return this.sky.progress * (flat ? 0.9 : 0.08);
+      case 'nebula': return 0.08 + this.nebula.progress * 0.82;
+      case 'planet': return 0.08 + this.planet.progress * 0.62;
+      case 'clouds': return 0.7 + this.clouds.progress * 0.2;
+      case 'fadein': return 0.9 + this.fade * 0.1;
+      default: return 1;
+    }
   }
 
   step(dt: number) {

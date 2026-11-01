@@ -6,6 +6,7 @@
   import { WorldBaker } from '../../lib/planet/baker';
   import { trackStages } from '../../lib/planet/stages';
   import { sim } from '../../lib/planet/sim.svelte';
+  import { describe } from '../../lib/planet/facts';
   import { createSkyMaterial } from '../../lib/planet/tsl/sky';
   import { createAtmosphereMaterial } from '../../lib/planet/tsl/atmosphere';
   import { createCloudMaterial, createPlanetMaterial, createRingMaterial } from '../../lib/planet/tsl/surface';
@@ -36,6 +37,13 @@
     sim.kind = detail.kind;
     sim.rarity = detail.rarity;
     sim.seed = detail.seed;
+    const traits = [
+      w.ring ? 'ringed' : '',
+      w.moons.length ? `${w.moons.length} moon${w.moons.length > 1 ? 's' : ''}` : '',
+      w.belt ? 'asteroid belt' : '',
+    ].filter(Boolean);
+    sim.traits = traits.join(', ');
+    sim.facts = describe(w);
   };
 
   let group = $state<Group>();
@@ -93,7 +101,6 @@
   let spin = 0;
   let drift = 0;
   let acc = 0;
-  let angularVelocity = 0;
   const rotateY = (m: Matrix3, a: number) => {
     const c = Math.cos(a);
     const s = Math.sin(a);
@@ -151,15 +158,12 @@
       }
     }
 
-    const before = angle + spin;
     angle += reduced ? 0 : dt * 0.022;
     spin += (stages.state.scroll * 2.2 - spin) * (reduced ? 1 : 1 - Math.exp(-dt * 1.6));
     drift += reduced ? 0 : dt * 0.0035;
     if (!reduced) u.clock.value += dt;
-    angularVelocity = dt > 0 ? (angle + spin - before) / dt : 0;
     // a pulsar's surface is carried round with its beams: same axis, same rate (rotateY turns the sampling frame, hence the sign)
     if (look.jets) {
-      angularVelocity = reduced ? 0 : (Math.PI * 2) / look.period; // the readout shows the real spin, the screen a compressed one
       rotateY(u.rotP.value, -u.clock.value * look.spin);
     } else rotateY(u.rotP.value, angle + spin);
     rotateY(u.rotC.value, angle + spin + drift);
@@ -172,9 +176,9 @@
     acc += dt;
     if (acc > 0.4) {
       acc = 0;
-      sim.alt = Math.round(Math.max(0, (CAMERA_Z / radius - 1) * 6371)).toLocaleString('en-US');
-      sim.rot = (angularVelocity * 57.2958).toFixed(2);
       sim.state = baker.state;
+      sim.phase = baker.phase;
+      sim.progress = baker.progress;
     }
   });
 
