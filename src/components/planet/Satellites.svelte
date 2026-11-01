@@ -51,9 +51,9 @@
   const compPulsar = uniform(0);
   const compTilt = uniform(0.8);
   const compRadius = uniform(1);
-  const companionStar = createStarMaterial(u, { ramp: compRamp, rot: compRot, pulsar: compPulsar, tilt: compTilt, phase: 2.1 });
+  const companionStar = createStarMaterial(u, { ramp: compRamp, rot: compRot, pulsar: compPulsar, tilt: compTilt, phase: 2.1, flares: false });
   const companionCorona = createCoronaMaterial(u, {
-    center: u.companionAt, scale: compRadius, ramp: compRamp, occluder: { center: u.primaryAt, radius: u.primaryR }, phase: 2.1,
+    center: u.companionAt, scale: compRadius, ramp: compRamp, occluder: { center: u.primaryAt, radius: u.primaryR }, phase: 2.1, flares: false,
   });
   const companionBeam = createBeamMaterial(u, compRamp, beamGain2);
   $effect(() => {

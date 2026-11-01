@@ -20,6 +20,8 @@ export const createUniforms = () => ({
   primaryAt: v3(), companionAt: v3(), primaryR: uniform(0), companionR: uniform(0), primaryScale: uniform(1),
   // a star's slow variation in brightness: amplitude, and rate in rad/s
   twinkle: uniform(0), twinkleRate: uniform(0.4),
+  // solar storm: envelope of the current flare (0 when quiet), how far through it we are, its size, and where on the limb it rises
+  flare: uniform(0), flareProg: uniform(0), flareAmt: uniform(0), flareSize: uniform(1), flareRate: uniform(0), flareDir: v3(0, 1, 0),
   sea: uniform(0.1), hasLiq: uniform(0), strata: uniform(0), strataF: uniform(6), ice: uniform(0),
   glowAmt: uniform(0), glowDay: uniform(0), glowMode: uniform(0), cloudAmt: uniform(1), activity: uniform(0.7), spots: uniform(0.1), storms: uniform(0), pulsar: uniform(0), beamTilt: uniform(0.8),
   br: v3(7.6, 17.8, 45), scatter: uniform(0.62),
@@ -78,6 +80,10 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
   u.storms.value = w.storms;
   u.pulsar.value = w.type.jets ? 1 : 0;
   u.beamTilt.value = w.beamTilt;
+  // a furious star throws huge loops, a dormant one only the odd small one; a pulsar's surface stays calm
+  u.flareAmt.value = w.type.jets ? 0 : 0.35 + 0.65 * w.tempest;
+  u.flareRate.value = w.type.jets ? 0 : w.tempest;
+  u.flare.value = 0;
 
   u.hasRing.value = w.ring ? 1 : 0;
   const look: WorldLook = { kind: w.kind, clouds: false, ring: false, sizeK: 1, size: w.size, shiftX: 0, tilt: w.tilt, moons: w.moons.map((m) => ({ ...m, color: color(m.role, m.tone) })), belt: w.belt, binary: !!w.type.binary, jets: !!w.type.jets, beamTilt: w.beamTilt, spin: pulsarSpin(w.period), period: w.period, companion: null, body: 1 };

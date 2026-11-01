@@ -112,6 +112,44 @@
   const tiltEuler = new Euler();
   const toSky = new Matrix4();
   const lerp = MathUtils.lerp;
+
+  // solar storm: every so often a loop rises from the limb, swells and falls back; calmer stars wait longer between them
+  const flareView = new Vector3();
+  const flareSide = new Vector3();
+  const storm = { wait: 4, t: -1 };
+  const stepStorm = (dt: number) => {
+    const live = look.kind === 'star' && !look.jets && !reduced && baked;
+    if (!live) {
+      u.flare.value = 0;
+      storm.t = -1;
+      return;
+    }
+    if (storm.t < 0) {
+      storm.wait -= dt;
+      if (storm.wait > 0) return;
+      // rise from a random point of the limb: perpendicular to the line of sight, so the loop is seen in profile
+      flareView.copy(u.camL.value).sub(u.primaryAt.value).normalize();
+      flareSide.set(0, 1, 0).cross(flareView).normalize();
+      const a = Math.random() * Math.PI * 2;
+      u.flareDir.value.copy(flareSide).multiplyScalar(Math.cos(a)).addScaledVector(flareView.cross(flareSide), Math.sin(a)).normalize();
+      // from a small puff to a big eruption, a few of them huge
+      u.flareSize.value = 0.45 + Math.random() ** 1.6 * 0.95;
+      storm.t = 0;
+      return;
+    }
+    storm.t += dt;
+    const dur = 6 + u.flareAmt.value * u.flareSize.value * 6;
+    const p = storm.t / dur;
+    if (p >= 1) {
+      u.flare.value = 0;
+      storm.t = -1;
+      // a furious star erupts again almost at once, a dormant one waits half a minute or more
+      storm.wait = MathUtils.lerp(40, 1.5, u.flareRate.value) * (0.6 + Math.random() * 0.8);
+      return;
+    }
+    u.flareProg.value = p;
+    u.flare.value = MathUtils.smoothstep(p, 0, 0.1) * (1 - MathUtils.smoothstep(p, 0.5, 1));
+  };
   const side = (x: number) => MathUtils.smoothstep(Math.abs(x), 0.15, 0.45);
 
   useTask((dt) => {
@@ -162,6 +200,7 @@
     spin += (stages.state.scroll * 2.2 - spin) * (reduced ? 1 : 1 - Math.exp(-dt * 1.6));
     drift += reduced ? 0 : dt * 0.0035;
     if (!reduced) u.clock.value += dt;
+    stepStorm(dt);
     // a pulsar's surface is carried round with its beams: same axis, same rate (rotateY turns the sampling frame, hence the sign)
     if (look.jets) {
       rotateY(u.rotP.value, -u.clock.value * look.spin);
