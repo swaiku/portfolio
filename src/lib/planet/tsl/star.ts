@@ -1,4 +1,4 @@
-import { Fn, abs, clamp, dot, exp, float, length, cos, max, mix, normalize, positionLocal, pow, sin, smoothstep, vec3, vec4 } from 'three/tsl';
+import { Fn, If, abs, atan, clamp, cross, dot, exp, float, length, cos, max, mix, normalize, positionLocal, pow, sin, smoothstep, vec3, vec4 } from 'three/tsl';
 import type { Node } from 'three/webgpu';
 import { CustomBlending, NodeMaterial, OneFactor, OneMinusSrcColorFactor } from 'three/webgpu';
 import type { Uniforms } from '../uniforms';
@@ -13,6 +13,7 @@ export interface StarOpts {
   pulsar?: Node;
   tilt?: Node;
   phase?: number; // offset of its slow brightness variation, so two stars do not breathe in step
+  flares?: boolean; // whether the solar storm erupts on this star (the primary only)
 }
 
 /** Convective surface: advected granulation, drifting sunspots and bright storm patches, limb-darkened. */
@@ -53,7 +54,10 @@ export const createStarMaterial = (u: Uniforms, o: StarOpts = {}) => {
 
     const mu = max(dot(N0, V), 0);
     const limb = pow(mu, 0.55).mul(0.55).add(0.45);
-    const heat = granulation.mul(1.1).add(0.55).sub(spots.mul(0.55)).add(storm.mul(0.7)).add(cap.mul(0.9));
+    // the flare's footpoint: a white-hot patch on the disc, just inside the limb where the loops rise
+    const site = normalize(u.flareDir.add(normalize(u.camL).mul(0.45)));
+    const flash = o.flares === false ? float(0) : pow(max(dot(N0, site), 0), 90).mul(u.flare).mul(0.8);
+    const heat = granulation.mul(1.1).add(0.55).sub(spots.mul(0.55)).add(storm.mul(0.7)).add(cap.mul(0.9)).add(flash);
     const dark = float(1).sub(umbra.mul(0.96)).mul(float(1).sub(penumbra.mul(0.3)));
     return vec4(tonemap(rampColor(ramp, heat.mul(limb)).mul(limb).mul(dark).mul(float(1).add(cap.mul(0.6))).mul(breathe).mul(2.4).mul(u.fade)), 1);
   })();
@@ -70,6 +74,7 @@ export interface CoronaOpts {
   ramp?: Node[];
   occluder?: { center: Node; radius: Node };
   phase?: number;
+  flares?: boolean;
 }
 
 /** Corona and prominences: evaluated from the ray's closest approach to the star, screen-blended over the scene. */
@@ -118,10 +123,57 @@ export const createCoronaMaterial = (u: Uniforms, o: CoronaOpts = {}) => {
       // hidden outright behind the other star's body; in front of it the glow is almost entirely held back, or the star behind would look washed out and nested inside this one
       occ.assign(front.add(hit.sub(front).mul(0.9)));
     }
-    const intensity = base.add(streamers).add(arcs).add(eruption).mul(outsideDisc).mul(smoothstep(CORONA_RADIUS, 1.5, b)).mul(float(1).sub(occ));
+
+    // solar storm: a pair of nested loops that rise from the footpoint and swell, then a shock front of plasma thrown outward
+    const flareI = float(0).toVar();
+    if (o.flares !== false) {
+      If(u.flare.greaterThan(0.002), () => {
+        const fp = u.flareProg;
+        const phi = length(dir.sub(u.flareDir));
+        const grow = smoothstep(0, 0.45, fp);
+        const h = mix(0.15, 0.9, grow).mul(u.flareAmt);
+        const half = mix(0.13, 0.36, grow);
+        const x = clamp(phi.div(half), 0, 1);
+        // ragged edge for the loops, and streaks stretched along the height and advected upward, so the plasma licks like flames
+        const rag = fbm(vec3(phi.mul(12), out.mul(7).sub(fp.mul(4)), t.mul(0.35)), 3);
+        const lick = fbm(vec3(phi.mul(18), out.mul(2.2).sub(fp.mul(3)), t.mul(0.5)), 3);
+        const loop = (k: number) => {
+          const xk = clamp(x.mul(k), 0, 1);
+          const arch = h.div(k).mul(pow(float(1).sub(xk.mul(xk)), 0.7));
+          const d = out.sub(arch).add(rag.mul(0.32)).div(float(0.03).add(fp.mul(0.025)));
+          return exp(d.mul(d).negate()).mul(smoothstep(1.0, 0.85, x.mul(k)));
+        };
+        const loops = loop(1).add(loop(1.45).mul(0.7)).mul(clamp(rag.mul(1.8).add(1), 0.1, 2)).mul(2.2);
+        // tongues of fire licking up from the footpoints, thinning out toward the crest
+        const reach = h.mul(1.15).add(0.12);
+        const tongues = smoothstep(0.02, 0.45, lick.mul(1.7).add(0.22))
+          .mul(exp(pow(phi.div(half.mul(1.1).add(out.mul(0.3))), 2).negate()))
+          .mul(pow(float(1).sub(smoothstep(0, reach, out)), 1.3)).mul(smoothstep(0, 0.04, out)).mul(2.6);
+        const under = exp(out.mul(-3.5)).mul(exp(pow(phi.div(half.mul(1.1)), 2).negate())).mul(0.3);
+        // ejecta: clumps of plasma thrown outward, ragged rather than a clean ring
+        const front = fp.sub(0.15).mul(2);
+        const clumps = smoothstep(0.1, 0.55, fbm(vec3(phi.mul(5), out.sub(front).mul(3.2), t.mul(0.25)), 3).mul(1.5).add(0.3));
+        const shell = clumps.mul(exp(pow(out.sub(front).div(0.5), 2).negate())).mul(exp(pow(phi.div(0.55), 2).negate()))
+          .mul(smoothstep(0.15, 0.3, fp)).mul(float(1).sub(smoothstep(0.5, 1, fp))).mul(u.flareAmt).mul(0.3);
+        const burst = exp(fp.mul(-7)).mul(exp(out.mul(-2.2))).mul(exp(pow(phi.div(0.35), 2).negate())).mul(0.7);
+        flareI.assign(float(1).sub(exp(loops.add(tongues).add(under).add(shell).add(burst).mul(u.flare).negate())).mul(smoothstep(0, 0.1, out)));
+      });
+    }
+
+    // lens glare: thin diffraction spikes and a faint ghost ring, strongest on bright, active stars
+    const e1 = normalize(cross(rd, vec3(0, 1, 0)));
+    const e2 = cross(rd, e1);
+    const ang = atan(dot(dir, e2), dot(dir, e1));
+    const spikeA = pow(abs(cos(ang.mul(3))), 90);
+    const spikeB = pow(abs(cos(ang.mul(3).add(0.5236 * 3))), 140).mul(0.4);
+    const spikes = spikeA.add(spikeB).mul(exp(out.mul(-1.7))).div(out.mul(4).add(1)).mul(u.activity.mul(0.25).add(0.2));
+    const ghost = exp(pow(b.sub(1.95).div(0.09), 2).negate()).mul(0.035);
+
+    const intensity = base.add(streamers).add(arcs).add(eruption).add(spikes).add(ghost).mul(outsideDisc).mul(smoothstep(CORONA_RADIUS, 1.5, b)).mul(float(1).sub(occ));
     const breathe = float(1).add(u.twinkle.mul(sin(u.clock.mul(u.twinkleRate).add(o.phase ?? 0))));
-    const col = mix(ramp[2], ramp[4], exp(out.mul(-6))).mul(intensity).mul(breathe).mul(1.6);
-    return vec4(vec3(1).sub(exp(col.mul(u.fade).negate())), 1);
+    const col = mix(ramp[2], ramp[4], clamp(exp(out.mul(-6)).add(spikes.mul(1.5)), 0, 1)).mul(intensity).mul(breathe).mul(1.6);
+    const hot = rampColor(ramp, clamp(flareI.mul(0.6).add(0.3), 0, 1)).mul(flareI).mul(float(1).sub(occ)).mul(outsideDisc).mul(smoothstep(CORONA_RADIUS, 1.9, b)).mul(1.3);
+    return vec4(vec3(1).sub(exp(col.add(hot).mul(u.fade).negate())), 1);
   })();
   return m;
 };

@@ -282,6 +282,7 @@ export interface World {
   size: number; // overall scale, rolled last so older seeds keep their other traits
   spots: number; // stars: how many near-black sunspots
   storms: number; // stars: how violent the flares and eruptions
+  tempest: number; // stars: how often and how big the solar storms are, from a dormant star (0) to a furious one (1)
   beamTilt: number; // pulsars: angle between the beams' axis and the spin axis
   companion: Companion | null;
   nebula: number; // nebulae: which shape, see NEBULA_SHAPES
@@ -437,7 +438,10 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
   // UI accent follows the rolled palette; bright enough to read on the dark page
   const accent = hsl(hue, 0.8, 0.62);
 
-  return { seed, name, kind: family, type, tpl, arch, moons, belt, terrainSeed, hue, scheme, sat, drift, ring, tilt, activity, size, companion, nebula, period, spots: type.jets ? 0 : spots, storms: type.jets ? 0 : storms, beamTilt, accent };
+  // rolled after everything else so older seeds keep their other traits: a fifth of stars rage, a third are nearly dormant
+  const t = r();
+  const tempest = t < 0.22 ? 0.8 + r() * 0.2 : t < 0.55 ? r() * 0.12 : 0.3 + r() * 0.4;
+  return { seed, name, kind: family, type, tpl, arch, moons, belt, terrainSeed, hue, scheme, sat, drift, ring, tilt, activity, size, companion, nebula, period, spots: type.jets ? 0 : spots, storms: type.jets ? 0 : storms, tempest, beamTilt, accent };
 }
 
 /** Which of the world's scheme hues a colour takes. */
