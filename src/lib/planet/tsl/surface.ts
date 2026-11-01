@@ -65,21 +65,32 @@ export const createPlanetMaterial = (u: Uniforms, planetTex: Texture, cloudTex: 
     const liquid = u.hasLiq.greaterThan(0.5);
     const landM = select(liquid, smoothstep(u.sea.sub(0.006), u.sea.add(0.006), h), float(1)).toVar();
     const lat = abs(N0.y);
-    const detFade = smoothstep(0.012, 0.0025, fpx);
-    const grit = transpose(u.rotP).mul(
-      vec3(gnoise(d.mul(90)), gnoise(d.mul(90).add(vec3(7, 7, 7))), gnoise(d.mul(90).add(vec3(13, 13, 13)))),
-    );
+    const detFade = smoothstep(0.012, 0.0025, fpx).toVar();
+    // fine detail only shows up close; each block below is skipped wherever its weight is zero, so a small or distant
+    // planet, a dry world, a world without ice or the night side pay nothing for it (nearby pixels branch together)
+    const grit = vec3(0).toVar();
+    If(detFade.mul(landM).mul(float(1).sub(u.gas)).greaterThan(0.0005), () => {
+      grit.assign(transpose(u.rotP).mul(
+        vec3(gnoise(d.mul(90)), gnoise(d.mul(90).add(vec3(7, 7, 7))), gnoise(d.mul(90).add(vec3(13, 13, 13)))),
+      ));
+    });
     const n = normalize(N0.sub(T.mul(sl.x).add(B.mul(sl.y)).mul(landM.mul(0.11))).add(grit.mul(detFade.mul(landM).mul(0.16))));
 
     // --- albedo from the world's own palette ---
     const detA = fbm(d.mul(14), 4).toVar();
-    const detB = fbm(d.mul(52).add(vec3(4, 4, 4)), 4).mul(detFade).toVar();
+    const detB = float(0).toVar();
+    If(detFade.greaterThan(0.0005), () => {
+      detB.assign(fbm(d.mul(52).add(vec3(4, 4, 4)), 4).mul(detFade));
+    });
     const lo = select(liquid, u.sea, float(-0.4));
     const t = h.sub(lo).div(0.95).add(moist.sub(0.5).mul(0.3)).add(detA.mul(0.2)).add(detB.mul(0.06)).toVar();
     t.assign(mix(t, h.add(detA.mul(0.05)), u.gas)); // bands read straight off the ramp
     t.addAssign(u.strata.mul(0.16).mul(sin(h.mul(u.strataF).add(detA.mul(0.8)).mul(6.2832))));
 
-    const grain = gnoise(d.mul(160)).mul(smoothstep(0.004, 0.0008, fpx));
+    const grain = float(0).toVar();
+    If(fpx.lessThan(0.004), () => {
+      grain.assign(gnoise(d.mul(160)).mul(smoothstep(0.004, 0.0008, fpx)));
+    });
     const stainA = smoothstep(0.38, 0.52, moist);
     const stainB = smoothstep(0.62, 0.78, moist);
     const stain = mix(mix(vec3(1, 1, 1), u.gasA, stainA), u.gasB, stainB);
@@ -90,46 +101,53 @@ export const createPlanetMaterial = (u: Uniforms, planetTex: Texture, cloudTex: 
     const depth = max(u.sea.sub(h), 0);
     const liq = mix(u.liqShallow, u.liqDeep, smoothstep(0, 0.16, depth)).add(u.liqShallow.mul(exp(depth.mul(-70))).mul(0.7));
 
-    const iceStart = mix(1.08, 0.6, u.ice);
-    const iceM = select(
-      u.ice.greaterThan(0.01),
-      smoothstep(iceStart, iceStart.add(0.07), lat.add(moist.sub(0.5).mul(0.09)).add(gnoise(d.mul(12)).mul(0.025))),
-      float(0),
-    );
-    const iceCol = u.iceCol.mul(gnoise(d.mul(9).add(vec3(3, 3, 3))).mul(0.5).add(0.5).mul(0.22).add(0.78));
+    const iceM = float(0).toVar();
+    const iceCol = u.iceCol.toVar();
+    If(u.ice.greaterThan(0.01), () => {
+      const iceStart = mix(1.08, 0.6, u.ice);
+      iceM.assign(smoothstep(iceStart, iceStart.add(0.07), lat.add(moist.sub(0.5).mul(0.09)).add(gnoise(d.mul(12)).mul(0.025))));
+      If(iceM.greaterThan(0), () => {
+        iceCol.assign(u.iceCol.mul(gnoise(d.mul(9).add(vec3(3, 3, 3))).mul(0.5).add(0.5).mul(0.22).add(0.78)));
+      });
+    });
 
     const albedo = mix(mix(liq, land, landM), iceCol, iceM).toVar();
-    const oceanM = float(1).sub(landM).mul(float(1).sub(iceM));
+    const oceanM = float(1).sub(landM).mul(float(1).sub(iceM)).toVar();
     const nUse = mix(mix(n, N0, iceM.mul(float(1).sub(landM))), N0, u.gas); // no relief on a gas giant
 
     // --- cloud shadow: sample the cloud shell along the sun ray ---
     const ndlG = dot(N0, L).toVar();
     const q = normalize(N0.add(L.mul(float(0.012).div(max(ndlG, 0.14)))));
-    const cs = sampleAt(cloudTex, u.rotC.mul(q), lod.add(1)).x.mul(u.cloudAmt);
-    const shadow = float(1).sub(cs.mul(0.72)).mul(float(1).sub(ringShadow(u, N0, L)));
+    const cs = sampleAt(cloudTex, u.rotC.mul(q), lod.add(1)).x.mul(u.cloudAmt).toVar();
+    const shadow = float(1).sub(cs.mul(0.72)).mul(float(1).sub(ringShadow(u, N0, L))).toVar();
 
     // --- direct light ---
     const ndl = max(dot(nUse, L), 0);
-    const horizon = smoothstep(-0.06, 0.07, ndlG);
+    const horizon = smoothstep(-0.06, 0.07, ndlG).toVar();
     const sunC = sunColor(ndlG, u).toVar();
     const col = albedo.mul(sunC).mul(SUN).mul(ndl).mul(shadow).mul(horizon).toVar();
 
     // --- twilight band hugging the terminator, tinted by the sky ---
     const band = smoothstep(-0.14, -0.01, ndlG).mul(smoothstep(0.2, 0, ndlG));
     col.addAssign(albedo.mul(mix(vec3(0.95, 0.34, 0.1), u.atmoCol.mul(1.6), 0.55)).mul(band).mul(0.55).mul(shadow));
-    const twi = smoothstep(-0.28, 0.35, ndlG);
+    const twi = smoothstep(-0.28, 0.35, ndlG).toVar();
     col.addAssign(albedo.mul(u.atmoCol).mul(0.16).mul(twi.mul(1.1).add(0.12)).mul(float(1).sub(cs.mul(0.5))));
     col.addAssign(albedo.mul(vec3(0.0016, 0.0024, 0.005)));
 
     // --- liquid: wave-broken sun glint and sky reflection ---
-    const H = normalize(L.add(V));
-    const waves = vec3(gnoise(d.mul(120)), gnoise(d.mul(120).add(vec3(7, 7, 7))), gnoise(d.mul(120).add(vec3(13, 13, 13)))).mul(0.5)
-      .add(vec3(gnoise(d.mul(340)), gnoise(d.mul(340).add(vec3(5, 5, 5))), gnoise(d.mul(340).add(vec3(11, 11, 11)))).mul(0.5)
-        .mul(smoothstep(0.006, 0.0015, fpx)));
-    const ndh = max(dot(normalize(N0.add(waves.mul(0.045))), H), 0);
-    const fres = float(0.02).add(pow(float(1).sub(max(dot(N0, V), 0)), 5).mul(0.98));
-    const glint = pow(ndh, 40).mul(0.03).add(pow(ndh, 8).mul(0.006));
-    col.addAssign(oceanM.mul(glint).mul(sunC).mul(shadow).mul(horizon).mul(fres.mul(0.6).add(0.4)));
+    const fres = float(0.02).add(pow(float(1).sub(max(dot(N0, V), 0)), 5).mul(0.98)).toVar();
+    // the glint only exists on sunlit liquid; the waves that break it up are the most expensive noise here
+    If(oceanM.mul(horizon).greaterThan(0), () => {
+      const H = normalize(L.add(V));
+      const waves = vec3(gnoise(d.mul(120)), gnoise(d.mul(120).add(vec3(7, 7, 7))), gnoise(d.mul(120).add(vec3(13, 13, 13)))).mul(0.5).toVar();
+      If(fpx.lessThan(0.006), () => {
+        waves.addAssign(vec3(gnoise(d.mul(340)), gnoise(d.mul(340).add(vec3(5, 5, 5))), gnoise(d.mul(340).add(vec3(11, 11, 11)))).mul(0.5)
+          .mul(smoothstep(0.006, 0.0015, fpx)));
+      });
+      const ndh = max(dot(normalize(N0.add(waves.mul(0.045))), H), 0);
+      const glint = pow(ndh, 40).mul(0.03).add(pow(ndh, 8).mul(0.006));
+      col.addAssign(oceanM.mul(glint).mul(sunC).mul(shadow).mul(horizon).mul(fres.mul(0.6).add(0.4)));
+    });
     col.addAssign(oceanM.mul(fres).mul(u.atmoCol).mul(twi.add(0.12)).mul(0.22));
 
     // --- emission: city lights (mode 0) or glowing veins (mode 1) ---
