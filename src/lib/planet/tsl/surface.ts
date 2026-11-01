@@ -59,6 +59,9 @@ export const createPlanetMaterial = (u: Uniforms, planetTex: Texture, cloudTex: 
     const pd = sampleAt(planetTex, d, lod).toVar();
     const h = pd.x;
     const sl = pd.yz;
+    // strata are contour lines of the height: where they would pack tighter than a pixel they blur into noise, so they fade out
+    const strataArg = h.mul(u.strataF);
+    const strataFade = smoothstep(0.7, 0.25, max(length(dFdx(strataArg)), length(dFdy(strataArg)))).toVar();
     const moist = pd.w;
     const { T, B } = tangentFrame(N0);
 
@@ -85,7 +88,7 @@ export const createPlanetMaterial = (u: Uniforms, planetTex: Texture, cloudTex: 
     const lo = select(liquid, u.sea, float(-0.4));
     const t = h.sub(lo).div(0.95).add(moist.sub(0.5).mul(0.3)).add(detA.mul(0.2)).add(detB.mul(0.06)).toVar();
     t.assign(mix(t, h.add(detA.mul(0.05)), u.gas)); // bands read straight off the ramp
-    t.addAssign(u.strata.mul(0.16).mul(sin(h.mul(u.strataF).add(detA.mul(0.8)).mul(6.2832))));
+    t.addAssign(u.strata.mul(0.16).mul(strataFade).mul(sin(strataArg.add(detA.mul(0.8)).mul(6.2832))));
 
     const grain = float(0).toVar();
     If(fpx.lessThan(0.004), () => {

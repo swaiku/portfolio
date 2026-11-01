@@ -67,7 +67,7 @@ export const createTerrainHeightBake = (t: TerrainUniforms) => {
     const h = c.add(land.mul(m.mul(t.amp).add(rdg.mul(t.ridge).mul(mount)))).toVar();
     If(t.terrace.greaterThan(0.5), () => {
       const s = h.mul(t.terrace);
-      h.assign(floor(s).add(smoothstep(0.3, 0.7, fract(s))).div(t.terrace));
+      h.assign(floor(s).add(smoothstep(0.2, 0.8, fract(s))).div(t.terrace));
     });
     // gas giants: no ground at all, just zonal bands along the latitude, bent by turbulence and sheared against each other
     If(t.bands.greaterThan(0.5), () => {

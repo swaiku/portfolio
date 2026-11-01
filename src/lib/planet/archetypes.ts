@@ -287,6 +287,24 @@ export interface World {
   nebula: number; // nebulae: which shape, see NEBULA_SHAPES
   period: number; // pulsars: real rotation period in seconds, 1.4 ms to 75.9 s like the known extremes
   accent: string;
+  light: number; // lightness shift of the whole palette
+  variance: Variance;
+}
+
+/** How far this world strays from its template's terrain, so two worlds of one class do not share a character. */
+export interface Variance {
+  cfreq: number; // multipliers
+  amp: number;
+  strata: number;
+  strataF: number;
+  clouds: number;
+  ice: number;
+  ridge: number; // offsets
+  warp: number;
+  sea: number;
+  terrace: number; // a multiplier, with a chance of terraces on a template that has none
+  bands: number;
+  swirl: number;
 }
 
 export const mulberry = (a: number) => () => {
@@ -355,14 +373,16 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
     if (Math.abs(gap) < 0.15) hue = (hue + (gap < 0 ? -0.15 : 0.15) - gap + 2) % 1;
   }
   const kindRoll = r();
-  const scheme = kindRoll < 0.2 ? [hue, hue + 0.07, hue - 0.07]
-    : kindRoll < 0.4 ? [hue, hue + 0.5, hue + 0.5 + (r() - 0.5) * 0.1]
-    : kindRoll < 0.6 ? [hue, hue + 1 / 3, hue + 2 / 3]
-    : kindRoll < 0.75 ? [hue, hue + 0.42, hue + 0.58]
+  const scheme = kindRoll < 0.14 ? [hue, hue + 0.07, hue - 0.07]
+    : kindRoll < 0.28 ? [hue, hue + 0.5, hue + 0.5 + (r() - 0.5) * 0.1]
+    : kindRoll < 0.42 ? [hue, hue + 1 / 3, hue + 2 / 3]
+    : kindRoll < 0.54 ? [hue, hue + 0.42, hue + 0.58]
+    : kindRoll < 0.64 ? [hue, hue + 0.25, hue + 0.75]
+    : kindRoll < 0.74 ? [hue, hue + 0.16, hue + 0.5] // two close hues and their opposite
     : [hue, r(), r()];
   if (r() < 0.5) [scheme[1], scheme[2]] = [scheme[2], scheme[1]];
-  const sat = (r() - 0.5) * 0.5;
-  const drift = (r() - 0.5) * 0.12;
+  const sat = (r() - 0.5) * 0.8;
+  const drift = (r() - 0.5) * 0.26;
   const ring = family === 'planet' && !type.belt && (type.ring || r() < (arch?.gas ? 0.6 : 0.42)) ? rollRing(r, pick(scheme)) : null;
   const tilt: [number, number] = family === 'hole'
     ? [0.05 + r() * 0.13, (r() - 0.5) * 0.6]
@@ -437,16 +457,25 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
   // UI accent follows the rolled palette; bright enough to read on the dark page
   const accent = hsl(hue, 0.8, 0.62);
 
-  return { seed, name, kind: family, type, tpl, arch, moons, belt, terrainSeed, hue, scheme, sat, drift, ring, tilt, activity, size, companion, nebula, period, spots: type.jets ? 0 : spots, storms: type.jets ? 0 : storms, beamTilt, accent };
+  // rolled after everything else, so a seed keeps its other traits
+  const light = (r() - 0.5) * 0.2;
+  const range = (a: number, b: number) => a + r() * (b - a);
+  const variance: Variance = {
+    cfreq: range(0.6, 1.6), amp: range(0.55, 1.6), strata: range(0.5, 1.15), strataF: range(0.75, 1.15),
+    clouds: range(0.4, 1.3), ice: range(0.4, 1.5), ridge: range(-0.3, 0.3), warp: range(-0.25, 0.35),
+    sea: range(-0.08, 0.1), terrace: r() < 0.18 ? 0 : range(0.6, 1.5) , bands: range(0.7, 1.35), swirl: range(0.5, 1.7),
+  };
+
+  return { seed, name, kind: family, type, tpl, arch, moons, belt, terrainSeed, hue, scheme, sat, drift, ring, tilt, activity, size, companion, nebula, period, spots: type.jets ? 0 : spots, storms: type.jets ? 0 : storms, beamTilt, accent, light, variance };
 }
 
 /** Which of the world's scheme hues a colour takes. */
 export const Role = { ground: 0, liquid: 1, air: 2 } as const;
 
 /** Gives a hueless template tone its colour in this world: the role picks the hue, `step` walks it along the ramp. */
-export const paint = (w: Pick<World, 'sat' | 'scheme' | 'drift'>) => (role: number, tone: Tone, step = 0): THREE.Vector3 => {
+export const paint = (w: Pick<World, 'sat' | 'scheme' | 'drift' | 'light'>) => (role: number, tone: Tone, step = 0): THREE.Vector3 => {
   const c = new THREE.Color();
-  c.setHSL(((w.scheme[role] + step * w.drift) % 1 + 1) % 1, Math.max(0, Math.min(1, tone[0] * (1 + w.sat))), tone[1]);
+  c.setHSL(((w.scheme[role] + step * w.drift) % 1 + 1) % 1, Math.max(0, Math.min(1, tone[0] * (1 + w.sat))), Math.max(0, Math.min(1, tone[1] + w.light * Math.min(1, tone[1] * 6, (1 - tone[1]) * 6))));
   return new THREE.Vector3(c.r, c.g, c.b);
 };
 

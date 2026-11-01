@@ -21,6 +21,13 @@ const ROCK: Record<string, Rock> = {
   cinder: { density: [4.8, 5.7], atmo: '', bar: [0, 0], ores: ['Graphite', 'Iron', 'Platinum group'] },
 };
 
+/** How well each ground template could host life before pressure, gravity and water are weighed in. */
+const HABITABLE: Record<string, number> = {
+  verdigris: 0.85, orchid: 0.8, saltglass: 0.45, frostbloom: 0.3, cobalt: 0.25, rust: 0.2, sulfur: 0.12, obsidian: 0.03, ember: 0.02, cinder: 0,
+};
+
+const bell = (x: number, mid: number, width: number) => Math.exp(-(((x - mid) / width) ** 2));
+
 interface Gas { radius: [number, number]; density: [number, number]; ores: string[] }
 
 const GAS: Record<string, Gas> = {
@@ -37,6 +44,13 @@ const power = (n: number) => {
   return `${(n / 10 ** e).toFixed(1)} × 10${sup(e)}`;
 };
 const lerp = (r: number, [a, b]: [number, number]) => a + (b - a) * r;
+/** A chance, and what a survey of that world turns up: the chance is the stat, the finding is one roll against it. */
+const life = (chance: number, r: () => number) => {
+  const pct = chance < 0.005 ? '<1%' : `${Math.round(chance * 100)}%`;
+  const found = r() < chance;
+  const kind = r();
+  return `${pct} chance, ${found ? (kind < 0.62 ? 'microbial' : kind < 0.93 ? 'complex ecosystems' : 'signs of intelligence') : 'none detected'}`;
+};
 const hours = (h: number) => (h > 48 ? `${(h / 24).toFixed(1)} days` : `${h.toFixed(1)} h`);
 
 const spectral = (k: number) => (k >= 30000 ? 'O' : k >= 10000 ? 'B' : k >= 7500 ? 'A' : k >= 6000 ? 'F' : k >= 5200 ? 'G' : k >= 3700 ? 'K' : 'M');
@@ -69,10 +83,17 @@ export function describe(w: World): Fact[] {
       const trace = lerp(r(), [0.2, 2.5]);
       const third = id === 'ammonia' ? 'NH₃' : id === 'tempest' ? 'H₂O' : 'CH₄';
       add('Atmosphere', `H₂ ${(100 - he - trace).toFixed(0)}% · He ${he.toFixed(0)}% · ${third} ${trace.toFixed(1)}%`);
+      add('Life', life(0.004 + r() * 0.03, r)); // only drifting aerial life, if any
       add('Main resource', gas.ores[Math.floor(r() * gas.ores.length)]);
       add('Day', hours(lerp(r(), [8, 20])));
     } else {
-      add('Atmosphere', rock.bar[1] ? `${rock.atmo} · ${sig(lerp(r(), rock.bar))} bar` : 'None, a trace of argon');
+      const bar = rock.bar[1] ? lerp(r(), rock.bar) : 0;
+      add('Atmosphere', bar ? `${rock.atmo} · ${sig(bar)} bar` : 'None, a trace of argon');
+      // air to breathe and keep water liquid, a gravity a body can live under, and open water to start from
+      const air = bar ? bell(Math.log(bar), Math.log(1.2), 1) : 0.03;
+      const pull = bell(g, 10, 9);
+      const water = w.arch?.liquid ? 1 : 0.7;
+      add('Life', life(Math.min(0.92, HABITABLE[id] * air * pull * water * lerp(r(), [0.85, 1.15])), r));
       add('Main resource', rock.ores[Math.floor(r() * rock.ores.length)]);
       add('Day', hours(10 ** lerp(r(), [0.8, 1.9])));
     }
@@ -106,6 +127,7 @@ export function describe(w: World): Fact[] {
     add('Nucleus', `${lerp(r(), [0.6, 18]).toFixed(1)} km across`);
     add('Mass', `${power(10 ** lerp(r(), [12, 15.5]))} kg`);
     add('Composition', 'H₂O ice · CO₂ · dust');
+    add('Life', life(0.008, r)); // prebiotic chemistry at best
     add('Main resource', 'Water ice');
   } else {
     add('Shape', NEBULA_SHAPES[w.nebula]);

@@ -145,14 +145,17 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
   const a = w.arch!;
   const t = a.terrain;
   u.terrain.seed.value = w.terrainSeed;
-  u.terrain.cfreq.value = t.cfreq;
-  u.terrain.amp.value = t.amp;
-  u.terrain.ridge.value = t.ridge;
-  u.terrain.warp.value = t.warp;
-  u.terrain.terrace.value = t.terrace;
+  const v = w.variance;
+  const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
+  u.terrain.cfreq.value = t.cfreq * v.cfreq;
+  u.terrain.amp.value = t.amp * v.amp;
+  u.terrain.ridge.value = clamp(t.ridge + v.ridge, 0, 1);
+  u.terrain.warp.value = Math.max(0, t.warp + v.warp);
+  // a flat template may gain terraces; a terraced one keeps its steps or loses them
+  u.terrain.terrace.value = t.terrace ? Math.round(t.terrace * v.terrace) : v.terrace > 1.35 && !a.gas ? 5 : 0;
   u.terrain.dry.value = t.dry ? 1 : 0;
-  u.terrain.bands.value = a.gas?.bands ?? 0;
-  u.terrain.swirl.value = a.gas?.swirl ?? 0;
+  u.terrain.bands.value = (a.gas?.bands ?? 0) * v.bands;
+  u.terrain.swirl.value = (a.gas?.swirl ?? 0) * v.swirl;
   u.gas.value = a.gas ? 1 : 0;
   // gas giants stain their bands with the other two hues of the scheme, at full strength so the stripes stay distinct
   const stain = (role: number) => { const c = color(role, [0.95, 0.5]); return c.divideScalar(Math.max(c.x, c.y, c.z, 1e-4)); };
@@ -160,14 +163,16 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
   u.gasB.value = stain(Role.air);
 
   u.hasLiq.value = a.liquid ? 1 : 0;
-  u.sea.value = a.liquid?.level ?? -9;
+  u.sea.value = a.liquid ? a.liquid.level + v.sea : -9;
   u.liqDeep.value = a.liquid ? color(Role.liquid, a.liquid.deep) : new Vector3();
   u.liqShallow.value = a.liquid ? color(Role.liquid, a.liquid.shallow, 1) : new Vector3();
-  u.strata.value = a.strata;
-  u.strataF.value = a.strataF;
-  u.ice.value = a.ice?.amount ?? 0;
+  // terraces already cut the ground into layers: strata on top of them would turn into a busy, pixelated weave
+  const stepped = u.terrain.terrace.value > 0;
+  u.strata.value = clamp(a.strata * v.strata * (stepped ? 0.6 : 1), 0, 0.9);
+  u.strataF.value = a.strataF * v.strataF * (stepped ? 0.8 : 1);
+  u.ice.value = clamp((a.ice?.amount ?? 0) * v.ice, 0, 1);
   u.iceCol.value = color(Role.ground, a.ice?.color ?? [0, 1]);
-  u.cloudAmt.value = a.cloud.amt;
+  u.cloudAmt.value = clamp(a.cloud.amt * v.clouds, 0, 1);
   u.cloudTint.value = color(Role.air, a.cloud.tint);
   u.glowAmt.value = a.glow?.amt ?? 0;
   u.glowMode.value = a.glow?.mode ?? 0;
