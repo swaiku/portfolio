@@ -43,11 +43,10 @@ export const skyColor = (skyTex: Texture, clock: Node, seed: Node, dir: Node, fo
   return nebula.add(stars.mul(gain));
 };
 
-/** Backdrop dome, rendered first and ignoring depth. */
+/** Backdrop dome, drawn after the opaque bodies and behind them, so covered pixels cost nothing. */
 export const createSkyMaterial = (skyTex: Texture, u: Uniforms) => {
   const m = new NodeMaterial();
   m.side = BackSide;
-  m.depthTest = false;
   m.depthWrite = false;
   m.fragmentNode = Fn(() => {
     const dir = normalize(positionLocal);

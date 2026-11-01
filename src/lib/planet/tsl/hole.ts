@@ -25,7 +25,7 @@ const STEPS = 160;
 export const createHoleMaterial = (u: Uniforms, skyTex: Texture) => {
   const h = u.hole;
   const m = new NodeMaterial();
-  m.depthWrite = false;
+  // writes depth like any opaque body, so the sky dome drawn after it leaves its pixels alone
   m.fragmentNode = Fn(() => {
     const p0 = positionLocal;
     const v0 = normalize(p0.sub(u.camL));

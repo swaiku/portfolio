@@ -55,7 +55,7 @@
   const materials = {
     planet: createPlanetMaterial(u, baker.planet.target.texture, baker.clouds.target.texture),
     clouds: createCloudMaterial(u, baker.clouds.target.texture),
-    atmosphere: createAtmosphereMaterial(u),
+    atmosphere: createAtmosphereMaterial(u, baker.optics.target.texture),
     ring: createRingMaterial(u),
     star: createStarMaterial(u),
     corona: createCoronaMaterial(u, { center: u.primaryAt, scale: u.primaryScale, occluder: { center: u.companionAt, radius: u.companionR } }),
@@ -199,5 +199,6 @@
 </script>
 
 <T.PerspectiveCamera makeDefault position={[0, 0, CAMERA_Z]} fov={FOV} near={0.1} far={200} />
-<T.Mesh bind:ref={dome} geometry={domeGeometry} material={skyMaterial} renderOrder={-10} frustumCulled={false} />
+<!-- drawn after the opaque bodies, so the depth test skips every sky pixel they cover -->
+<T.Mesh bind:ref={dome} geometry={domeGeometry} material={skyMaterial} renderOrder={10} frustumCulled={false} />
 <Globe bind:group {look} {u} {materials} {baked} />

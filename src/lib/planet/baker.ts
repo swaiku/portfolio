@@ -6,6 +6,7 @@ import { float } from 'three/tsl';
 import type { NodeMaterial, WebGPURenderer } from 'three/webgpu';
 import { randomSeed, rollWorld, type World } from './archetypes';
 import { applyWorld, type Uniforms, type WorldLook } from './uniforms';
+import { createOpticalDepthBake, OPTICS_H, OPTICS_W } from './tsl/atmosphere';
 import {
   createCloudDensityBake, createNebulaBake, createSkyBake, createSlopePass, createTerrainHeightBake, NEBULA_ASPECT, strip, terrainMoisture,
 } from './tsl/bake';
@@ -85,6 +86,8 @@ export class WorldBaker {
   readonly planet: Bake;
   readonly clouds: Bake;
   readonly nebula: Bake;
+  /** Atmosphere lookup table: the same for every world, so it is baked once and never restarted. */
+  readonly optics: Bake;
   phase: Phase = 'sky';
   fade = 0;
   world: World;
@@ -134,6 +137,14 @@ export class WorldBaker {
     this.nebula = new Bake(renderer, [
       { material: createNebulaBake(u), target: makeTarget(nebulaW, Math.round(nebulaW / NEBULA_ASPECT / 2) * 2, 'color-nomip'), strips: 32 },
     ]);
+    this.optics = new Bake(renderer, [{
+      material: createOpticalDepthBake(),
+      target: new RenderTarget(OPTICS_W, OPTICS_H, {
+        type: HalfFloatType, format: RGBAFormat, minFilter: LinearFilter, magFilter: LinearFilter,
+        wrapS: ClampToEdgeWrapping, wrapT: ClampToEdgeWrapping, generateMipmaps: false, depthBuffer: false,
+      }),
+      strips: 1,
+    }]);
     this.look = applyWorld(u, this.world);
     onWorld(this.world, this.look);
   }
@@ -149,6 +160,7 @@ export class WorldBaker {
   }
 
   step(dt: number) {
+    if (!this.optics.done) this.optics.step();
     switch (this.phase) {
       case 'sky': this.sky.step(); if (this.sky.done) this.phase = this.look.kind === 'planet' ? 'planet' : this.look.kind === 'nebula' ? 'nebula' : 'fadein'; break;
       case 'nebula': this.nebula.step(); if (this.nebula.done) this.phase = 'fadein'; break;
@@ -180,6 +192,6 @@ export class WorldBaker {
   }
 
   dispose() {
-    [this.sky, this.planet, this.clouds, this.nebula].forEach((b) => b.dispose());
+    [this.sky, this.planet, this.clouds, this.nebula, this.optics].forEach((b) => b.dispose());
   }
 }

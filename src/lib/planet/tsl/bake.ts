@@ -17,9 +17,9 @@ const stripVertex = vec4(
   0,
   1,
 );
-const stripUv = () => vec2(uv().x, strip.index.add(uv().y).div(strip.count));
+export const stripUv = () => vec2(uv().x, strip.index.add(uv().y).div(strip.count));
 
-const bakeMaterial = (fragment: Node) => {
+export const bakeMaterial = (fragment: Node) => {
   const m = new NodeMaterial();
   m.vertexNode = stripVertex;
   m.fragmentNode = fragment;
