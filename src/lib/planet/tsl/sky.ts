@@ -33,10 +33,14 @@ const starLayer = (dir: Node, footprint: Node, clock: Node, seed: Node, scale: n
 /** Nebula + stars along a direction. Shared by the dome and by the black hole's lensed view of it. */
 export const skyColor = (skyTex: Texture, clock: Node, seed: Node, dir: Node, footprint: Node, starGain: Node = float(1)): Node => {
   const nebula = texture(skyTex, dirToUv(dir)).level(0).rgb;
-  const stars = starLayer(dir, footprint, clock, seed, 70, 0.15, 11)
-    .add(starLayer(dir, footprint, clock, seed, 150, 0.21, 31))
-    .add(starLayer(dir, footprint, clock, seed, 320, 0.27, 53));
-  return nebula.add(stars.mul(starGain));
+  // footprint and gain may hold screen-space derivatives: evaluate them here, before the per-cell branches, where every
+  // pixel still runs the same code (inside a branch, derivatives across cell edges are garbage and draw grid lines)
+  const fp = footprint.toVar();
+  const gain = starGain.toVar();
+  const stars = starLayer(dir, fp, clock, seed, 70, 0.15, 11)
+    .add(starLayer(dir, fp, clock, seed, 150, 0.21, 31))
+    .add(starLayer(dir, fp, clock, seed, 320, 0.27, 53));
+  return nebula.add(stars.mul(gain));
 };
 
 /** Backdrop dome, rendered first and ignoring depth. */
