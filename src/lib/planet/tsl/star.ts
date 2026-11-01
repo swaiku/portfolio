@@ -130,8 +130,9 @@ export const createCoronaMaterial = (u: Uniforms, o: CoronaOpts = {}) => {
       If(u.flare.greaterThan(0.002), () => {
         const fp = u.flareProg;
         const phi = length(dir.sub(u.flareDir));
+        const amt = u.flareAmt.mul(u.flareSize);
         const grow = smoothstep(0, 0.45, fp);
-        const h = mix(0.15, 0.9, grow).mul(u.flareAmt);
+        const h = mix(0.15, 0.9, grow).mul(amt);
         const half = mix(0.13, 0.36, grow);
         const x = clamp(phi.div(half), 0, 1);
         // ragged edge for the loops, and streaks stretched along the height and advected upward, so the plasma licks like flames
@@ -154,7 +155,7 @@ export const createCoronaMaterial = (u: Uniforms, o: CoronaOpts = {}) => {
         const front = fp.sub(0.15).mul(2);
         const clumps = smoothstep(0.1, 0.55, fbm(vec3(phi.mul(5), out.sub(front).mul(3.2), t.mul(0.25)), 3).mul(1.5).add(0.3));
         const shell = clumps.mul(exp(pow(out.sub(front).div(0.5), 2).negate())).mul(exp(pow(phi.div(0.55), 2).negate()))
-          .mul(smoothstep(0.15, 0.3, fp)).mul(float(1).sub(smoothstep(0.5, 1, fp))).mul(u.flareAmt).mul(0.3);
+          .mul(smoothstep(0.15, 0.3, fp)).mul(float(1).sub(smoothstep(0.5, 1, fp))).mul(amt).mul(0.3);
         const burst = exp(fp.mul(-7)).mul(exp(out.mul(-2.2))).mul(exp(pow(phi.div(0.35), 2).negate())).mul(0.7);
         flareI.assign(float(1).sub(exp(loops.add(tongues).add(under).add(shell).add(burst).mul(u.flare).negate())).mul(smoothstep(0, 0.1, out)));
       });

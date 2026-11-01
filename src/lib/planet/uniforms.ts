@@ -21,7 +21,7 @@ export const createUniforms = () => ({
   // a star's slow variation in brightness: amplitude, and rate in rad/s
   twinkle: uniform(0), twinkleRate: uniform(0.4),
   // solar storm: envelope of the current flare (0 when quiet), how far through it we are, its size, and where on the limb it rises
-  flare: uniform(0), flareProg: uniform(0), flareAmt: uniform(0), flareRate: uniform(0), flareDir: v3(0, 1, 0),
+  flare: uniform(0), flareProg: uniform(0), flareAmt: uniform(0), flareSize: uniform(1), flareRate: uniform(0), flareDir: v3(0, 1, 0),
   sea: uniform(0.1), hasLiq: uniform(0), strata: uniform(0), strataF: uniform(6), ice: uniform(0),
   glowAmt: uniform(0), glowDay: uniform(0), glowMode: uniform(0), cloudAmt: uniform(1), activity: uniform(0.7), spots: uniform(0.1), storms: uniform(0), pulsar: uniform(0), beamTilt: uniform(0.8),
   br: v3(7.6, 17.8, 45), scatter: uniform(0.62),

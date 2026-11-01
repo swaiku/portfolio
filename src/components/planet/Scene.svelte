@@ -123,13 +123,15 @@
       // rise from a random point of the limb: perpendicular to the line of sight, so the loop is seen in profile
       flareView.copy(u.camL.value).sub(u.primaryAt.value).normalize();
       flareSide.set(0, 1, 0).cross(flareView).normalize();
-      const a = Math.PI * (0.55 + Math.random() * 0.9) + (flareSide.x < 0 ? Math.PI : 0); // toward the side with room
+      const a = Math.random() * Math.PI * 2;
       u.flareDir.value.copy(flareSide).multiplyScalar(Math.cos(a)).addScaledVector(flareView.cross(flareSide), Math.sin(a)).normalize();
+      // from a small puff to a big eruption, a few of them huge
+      u.flareSize.value = 0.45 + Math.random() ** 1.6 * 0.95;
       storm.t = 0;
       return;
     }
     storm.t += dt;
-    const dur = 8 + u.flareAmt.value * 6;
+    const dur = 6 + u.flareAmt.value * u.flareSize.value * 6;
     const p = storm.t / dur;
     if (p >= 1) {
       u.flare.value = 0;
