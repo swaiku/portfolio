@@ -20,7 +20,7 @@
   const CAMERA_Z = 10;
   const SUN = new Vector3(-0.92, 0.3, 0.18).normalize();
 
-  const { renderer, size, advance, dpr } = useThrelte();
+  const { renderer, size, advance } = useThrelte();
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const coarse = matchMedia('(pointer: coarse)').matches || innerWidth < 760;
 
@@ -77,12 +77,8 @@
     poke();
   };
 
-  // frame governor: caps the frame rate and lowers the render resolution when the GPU can't keep up
-  const MIN_DPR = 0.75;
+  // frame governor: caps the frame rate instead of rendering at the screen's refresh rate
   let sinceRender = 0;
-  let lastRender = 0;
-  let slowSum = 0;
-  let slowCount = 0;
   const govern = (dt: number) => {
     const now = performance.now();
     const active = now - lastInput < 2500 || baker.phase === 'fadein' || baker.phase === 'fadeout';
@@ -91,16 +87,6 @@
     if (sinceRender < interval - 0.002) return;
     sinceRender = Math.min(Math.max(sinceRender - interval, 0), interval);
     advance();
-
-    // measure only while the world is live: baking stalls frames on purpose, and a hidden tab pauses them
-    const gap = (now - lastRender) / 1000;
-    lastRender = now;
-    if (baker.phase !== 'live' || gap > 0.25) return;
-    slowSum += gap / interval;
-    if (++slowCount < 45) return;
-    if (slowSum / slowCount > 1.3 && dpr.current > MIN_DPR) dpr.set(Math.max(MIN_DPR, dpr.current - 0.25));
-    slowSum = 0;
-    slowCount = 0;
   };
 
   let angle = 0;

@@ -37,7 +37,7 @@
         <Canvas
             {createRenderer}
             renderMode="manual"
-            dpr={[1, 1.5]}
+            dpr={[1, 2]}
             toneMapping={NoToneMapping}
             shadows={false}
         >
