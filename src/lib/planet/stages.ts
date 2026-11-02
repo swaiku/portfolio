@@ -38,6 +38,8 @@ export function trackStages() {
       return Math.min(Math.max((r.top + scrollY + r.height / 2 - innerHeight / 2) / max, 0), 1);
     });
     const poses = sections.map((el) => parse(el, mobile));
+    // the size may change while the body sits beside the text, never when it is centred: a centred pose keeps the previous size
+    for (let i = 1; i < poses.length; i++) if (Math.abs(poses[i].x) < 0.1) poses[i].s = poses[i - 1].s;
 
     Object.assign(target, poses[0]);
     state.scroll = 0;

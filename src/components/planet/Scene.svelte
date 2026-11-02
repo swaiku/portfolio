@@ -111,7 +111,6 @@
   const inverseTilt = new Quaternion();
   const tiltEuler = new Euler();
   const toSky = new Matrix4();
-  const lerp = MathUtils.lerp;
 
   // solar storm: every so often a loop rises from the limb, swells and falls back; calmer stars wait longer between them
   const flareView = new Vector3();
@@ -169,14 +168,14 @@
 
     const halfH = Math.tan(MathUtils.degToRad(FOV / 2)) * CAMERA_Z;
     const halfW = halfH * (size.current.width / size.current.height);
-    // rings and coronas need room when the body sits to one side; centred, it can fill the frame
+    // rings and coronas are sized for the side positions; `aside` only shifts the body clear of the text
     const aside = side(cur.x);
     let scale = cur.s;
     let y = cur.y;
     if (look.kind === 'hole') {
       scale = Math.min(cur.s, 1.1) * look.sizeK;
       y = Math.max(cur.y, -0.55);
-    } else scale = cur.s * lerp(1, look.sizeK, aside);
+    } else scale = cur.s * look.sizeK; // not blended with x: the body must not swell as it crosses the page
     const radius = scale * look.size * Math.min(halfH, halfW);
 
     if (group) {
@@ -196,8 +195,8 @@
       }
     }
 
-    angle += reduced ? 0 : dt * 0.022;
-    spin += (stages.state.scroll * 2.2 - spin) * (reduced ? 1 : 1 - Math.exp(-dt * 1.6));
+    angle += reduced ? 0 : dt * 0.05;
+    spin += (stages.state.scroll * 0.6 - spin) * (reduced ? 1 : 1 - Math.exp(-dt * 1.6));
     drift += reduced ? 0 : dt * 0.0035;
     if (!reduced) u.clock.value += dt;
     stepStorm(dt);
