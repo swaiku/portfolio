@@ -13,7 +13,7 @@ export const site = {
   email: '',
   linkedin: '',
   // TODO: confirm wording / availability.
-  status: 'Open to internships and collaborations',
+  status: 'Open to work',
 };
 
 export const flightPlan = [

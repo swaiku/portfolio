@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import Clock from '../components/Clock.svelte';
+import FootBar from '../components/FootBar.svelte';
 import Survey from '../components/Survey.svelte';
 import { site, flightPlan, payload, missions, offDuty } from '../data/site';
 ---
@@ -10,7 +11,8 @@ import { site, flightPlan, payload, missions, offDuty } from '../data/site';
   description="Personal site of Jérémy (Swaiku): Master's student in Data Science at HES-SO Fribourg, working on MLOps, UAV navigation and self-hosted infrastructure."
 >
   <header class="topbar">
-    <a class="brand" href="#top"><i></i>swaiku</a>
+    <a class="brand" href="#top">swaiku</a>
+    <a class="status" href="#transmission"><span class="dot" aria-hidden="true"></span>{site.status}</a>
     <nav class="nav" aria-label="Sections">
       <a href="#briefing">Briefing</a>
       <a href="#payload">Payload</a>
@@ -32,7 +34,7 @@ import { site, flightPlan, payload, missions, offDuty } from '../data/site';
           <a class="link" href={site.github} rel="noopener">GitHub ↗</a>
         </div>
         <div class="facts reveal" style="--i:3">
-          <p class="meta" style="margin:0">{site.base} · <Clock client:idle tz={site.timezone} /> CET</p>
+          <p class="tag">{site.base} <Clock client:idle tz={site.timezone} /> CET</p>
         </div>
         <Survey client:only="svelte" />
       </div>
@@ -117,8 +119,5 @@ import { site, flightPlan, payload, missions, offDuty } from '../data/site';
     </section>
   </main>
 
-  <footer class="foot">
-    <span>Built with Astro, Svelte, Tailwind and Three.js. Every planet is procedural, generated in your browser from its seed.</span>
-    <button class="link" data-reseed type="button" style="background:none;border:0;padding:0;cursor:pointer">Survey a new world</button>
-  </footer>
+  <FootBar client:only="svelte" status={site.status} base={site.base} tz={site.timezone} github={site.github} />
 </Base>

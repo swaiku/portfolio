@@ -67,7 +67,7 @@
 <div class="survey">
   <p class="meta" bind:this={head}>
     Now surveying <b>{acquired ? sim.name : '…'}</b>
-    {#if acquired}<span class="sub">{sim.kind}, {sim.rarity}{sim.traits ? `, ${sim.traits}` : ''}</span>{/if}
+    {#if acquired}<span class="sub">{sim.kind}{sim.traits ? `, ${sim.traits}` : ''} <span class="tag" data-rarity={sim.rarity}>{sim.rarity}</span></span>{/if}
   </p>
 
   <ul class="rows" bind:this={list} aria-label="World data">
@@ -89,7 +89,17 @@
   .survey { margin-top: 40px; }
   p { margin: 0; }
   .meta b { font-weight: 500; color: var(--color-amber); }
-  .sub { display: block; color: var(--color-dim); }
+  .sub { display: block; margin-top: 6px; color: var(--color-dim); }
+  .tag {
+    display: inline-block; margin-left: 6px; padding: 2px 8px;
+    border: 1px solid currentColor; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--r, #dfe3f7);
+    background: color-mix(in srgb, currentColor 14%, transparent);
+  }
+  .tag[data-rarity='uncommon'] { --r: #6fdca0; }
+  .tag[data-rarity='rare'] { --r: #8fc7ff; }
+  .tag[data-rarity='epic'] { --r: #c39bff; }
+  .tag[data-rarity='legendary'] { --r: #ffb84d; }
   .rows { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; min-height: 12.5rem; align-content: start; }
   .row {
     display: grid;
