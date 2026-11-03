@@ -2,7 +2,7 @@
   import Probe from './Probe.svelte';
   import { onMount } from 'svelte';
   import { TYPES, type Rarity } from '../lib/planet/archetypes';
-  import { atlas, CLASSES, TASKS, TASK_HINTS, dismissToast, launchProbe, loggedCount, probeTargets, revisit } from '../lib/atlas.svelte';
+  import { atlas, CLASSES, TASKS, TASK_HINTS, TASK_HOW, dismissToast, launchProbe, loggedCount, probeTargets, revisit } from '../lib/atlas.svelte';
   import { startInteractions } from '../lib/interactions';
 
   let { tz }: { tz: string } = $props();
@@ -89,7 +89,7 @@
             <span class="id"><Probe /></span>
             <span class="body">
               <span class="name">{done || !t.hidden ? t.label : '???'}</span>
-              <span class="line">{done ? 'Probe recovered.' : t.hidden ? '' : TASK_HINTS[id]}</span>
+              <span class="line">{done ? `Probe recovered. ${TASK_HOW[id] ?? ''}` : t.hidden ? '' : TASK_HINTS[id]}</span>
             </span>
             <span class="state">{done ? `Done ${day(atlas.tasks[id])}` : 'open'}</span>
           </li>

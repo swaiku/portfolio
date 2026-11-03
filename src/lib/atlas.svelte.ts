@@ -41,6 +41,18 @@ export const TASK_HINTS: Record<string, string> = {
   'off-duty': 'Visit the off-duty hours.',
 };
 
+/** How each probe task was done, shown once it is: the hidden ones keep their secret until then. */
+export const TASK_HOW: Record<string, string> = {
+  'day-cycle': 'You went down to the bottom of the page and back to the top.',
+  payload: 'You visited the payload bay.',
+  missions: 'You visited the active missions.',
+  'off-duty': 'You visited the off-duty hours.',
+  silence: 'You touched nothing for 25 seconds.',
+  night: 'You visited at night, between 22:00 and 05:00 in the base time zone.',
+  contact: 'You opened one of the contact links.',
+  logbook: 'You tapped the seed in the footer three times, quickly.',
+};
+
 interface Save {
   seen: Record<string, string>;
   logged: Record<string, { seed: string; at: number }>;
