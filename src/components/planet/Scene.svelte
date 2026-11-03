@@ -208,6 +208,8 @@
       if (look.companion) y = Math.max(y, -0.45);
     } // not blended with x: the body must not swell as it crosses the page
     const radius = scale * look.size * Math.min(halfH, halfW);
+    // a planet sinking to the page end shows a cap: keep its top at the middle of the screen whatever its size, so enough of it is seen
+    if (look.kind === 'planet') y = Math.max(y, -0.05 - radius / halfH);
 
     if (group) {
       group.rotation.set(look.tilt[0] + pointer.y * 0.03, 0, look.tilt[1]);
