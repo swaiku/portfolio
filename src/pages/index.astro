@@ -10,7 +10,7 @@ import { site, flightPlan, payload, missions, offDuty } from '../data/site';
 
 <Base
   title="Swaiku · Jérémy, data science and robotics"
-  description="Personal site of Jérémy (Swaiku): Master's student in Data Science at HES-SO Fribourg, working on MLOps, UAV navigation and self-hosted infrastructure."
+  description="Personal site of Jérémy (Swaiku): Master's student in Data Science at HES-SO (Fribourg and Lausanne), working on MLOps, UAV navigation and self-hosted infrastructure."
 >
   <header class="topbar">
     <a class="brand" href="#top">swaiku</a>
@@ -49,11 +49,12 @@ import { site, flightPlan, payload, missions, offDuty } from '../data/site';
         <div class="prose">
           <p class="reveal" style="--i:1">
             I'm Jérémy, known as Swaiku. I studied Data Engineering at HEIA-FR and I'm now a Master's student in
-            Data Science at HES-SO in Fribourg, with a focus on MLOps and cloud systems.
+            Data Science at HES-SO in Fribourg and Lausanne, with a focus on MLOps and cloud systems. I work in French,
+            English (B2) and German (A2).
           </p>
           <p class="reveal" style="--i:2">
-            Robots keep pulling me back in. I'm an alumnus of the Eurobot robotics competitions, and today I
-            research autonomous UAV navigation while running my own services on a Raspberry Pi 5 homelab.
+            Robots keep pulling me back in. I'm an alumnus of the Eurobot robotics competition. I
+            wrote my Bachelor thesis on UAV navigation without GPS, and I run my own services on a Raspberry Pi 5 homelab.
           </p>
         </div>
         <ol class="list tight reveal" style="--i:3; margin-top:1.8rem">
@@ -84,12 +85,12 @@ import { site, flightPlan, payload, missions, offDuty } from '../data/site';
 
     <section id="missions" class="stage side-r" data-stage="-0.78,0.1,1.15" data-stage-m="0,0.5,0.7">
       <div class="stage-inner wide">
-        <h2 class="h-section reveal">Active missions</h2>
+        <h2 class="h-section reveal">Active and past missions</h2>
         <div class="list reveal" style="--i:1; margin-top:1.6rem">
           {missions.map((m) => (
             <article class="mission">
               <div class="item-line">
-                <h3 class="item-title">{m.name}</h3>
+                <h3 class="item-title">{m.href ? <a href={m.href} rel="noopener">{m.name} ↗</a> : m.name}</h3>
                 <span class="meta">{m.where}</span>
               </div>
               <p class="item-text">{m.brief}</p>
