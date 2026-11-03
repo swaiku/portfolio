@@ -1,6 +1,6 @@
 import {
-  Fn, If, abs, clamp, dFdx, dFdy, float, floor, fract, length, max, mix, mx_cell_noise_float, normalize, positionLocal, pow, sin,
-  smoothstep, texture, vec3, vec4,
+  Fn, If, clamp, dFdx, dFdy, dot, float, floor, fract, length, max, mix, mx_cell_noise_float, normalize, positionLocal, pow, screenCoordinate, sin,
+  smoothstep, texture, vec2, vec3, vec4,
 } from 'three/tsl';
 import { BackSide, NodeMaterial } from 'three/webgpu';
 import type { Node, Texture } from 'three/webgpu';
@@ -51,7 +51,9 @@ export const createSkyMaterial = (skyTex: Texture, u: Uniforms) => {
   m.fragmentNode = Fn(() => {
     const dir = normalize(positionLocal);
     const footprint = max(length(dFdx(dir)), length(dFdy(dir)));
-    const dither = fract(sin(abs(dir.x.add(dir.y.mul(57)).add(dir.z.mul(113))).mul(91731)).mul(43758.5)).sub(0.5).div(255);
+    // interleaved gradient noise on the pixel grid, about one sRGB step of the dark sky (the transfer is applied after this).
+    // Keyed on the direction it drew curved bands: a hash of one linear function of dir repeats along great circles.
+    const dither = fract(fract(dot(screenCoordinate, vec2(0.06711056, 0.00583715))).mul(52.9829189)).sub(0.5).mul(0.0006);
     return vec4(clamp(skyColor(skyTex, u.clock, u.sky.seed, dir, footprint).add(dither), 0, 4), 1);
   })();
   return m;
