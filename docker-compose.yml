@@ -1,0 +1,10 @@
+services:
+  site:
+    build:
+      context: .
+      args:
+        PUBLIC_UMAMI_URL: ${PUBLIC_UMAMI_URL}
+        PUBLIC_UMAMI_ID: ${PUBLIC_UMAMI_ID}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3200:80"
