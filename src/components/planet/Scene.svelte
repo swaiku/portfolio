@@ -113,7 +113,7 @@
     if (lastRender && !document.hidden) period += ((now - lastRender) / 1000 - period) * 0.1;
     lastRender = now;
     if (baker.phase !== 'live' || now < settleAt || !period) return;
-    if (period > interval * 1.45 && quality.dpr > quality.floor) {
+    if (period > interval * 1.2 && quality.dpr > quality.floor) {
       quality.dpr = Math.max(quality.floor, quality.dpr - 0.25);
       settleAt = now + 3000;
       period = 0;
