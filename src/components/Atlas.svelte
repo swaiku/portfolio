@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Probe from './Probe.svelte';
   import { onMount } from 'svelte';
   import { TYPES, type Rarity } from '../lib/planet/archetypes';
   import { atlas, CLASSES, TASKS, TASK_HINTS, dismissToast, launchProbe, loggedCount, probeTargets, revisit } from '../lib/atlas.svelte';
@@ -85,7 +86,7 @@
         {#each tasks as [id, t] (id)}
           {@const done = !!atlas.tasks[id]}
           <li class="row" data-state={done ? 'logged' : 'unsurveyed'}>
-            <span class="id">◎</span>
+            <span class="id"><Probe /></span>
             <span class="body">
               <span class="name">{done || !t.hidden ? t.label : '???'}</span>
               <span class="line">{done ? 'Probe recovered.' : t.hidden ? '' : TASK_HINTS[id]}</span>

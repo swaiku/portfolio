@@ -6,7 +6,7 @@ export const site = {
   base: 'Fribourg, CH',
   timezone: 'Europe/Zurich',
   tagline:
-    'I build machine-learning systems, autonomous robots and the infrastructure that keeps them running.',
+    'Data science student. I build machine-learning systems, autonomous robots and the infrastructure that keeps them running.',
   github: 'https://github.com/swaiku',
   email: '', // deliberately not published: contact goes through LinkedIn and GitHub
   linkedin: 'https://www.linkedin.com/in/prinjeremy',
