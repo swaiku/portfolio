@@ -38,7 +38,7 @@
 
 ## About the project
 
-The personal site of Jérémy ("Swaiku"): Master's student in Data Science at HES-SO (Fribourg and Lausanne), working on MLOps, UAV navigation and robotics. It extends my GitHub profile with a telemetry vocabulary ("Mission briefing", "Payload modules", "Active missions", "Transmission log") around a planet that is generated and rendered live in the browser.
+The personal site of Jérémy ("Swaiku"): Master's student in Data Science at HES-SO in Lausanne, working on MLOps, UAV navigation and robotics. It extends my GitHub profile with a telemetry vocabulary ("Mission briefing", "Payload modules", "Active missions", "Transmission log") around a planet that is generated and rendered live in the browser.
 
 - Every visit rolls a new world from a seed: rocky and gas planets, stars, pulsars, black holes, nebulae and comets. Collect them all in the Atlas.
 - Terrain, atmosphere scattering, clouds and lensing are computed on the GPU with TSL shaders; no texture is downloaded.

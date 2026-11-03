@@ -1,21 +1,21 @@
 // Everything on the page that is a fact about Jérémy lives here (source: his CV and public GitHub repos).
 
 export const site = {
-  handle: 'Swaiku',
+  handle: 'Jrmy',
   name: 'Jérémy',
   base: 'Fribourg, CH',
   timezone: 'Europe/Zurich',
   tagline:
     'I build machine-learning systems, autonomous robots and the infrastructure that keeps them running.',
   github: 'https://github.com/swaiku',
-  email: 'prin.jeremy@protonmail.ch',
+  email: '', // deliberately not published: contact goes through LinkedIn and GitHub
   linkedin: 'https://www.linkedin.com/in/prinjeremy',
   // TODO: confirm wording / availability.
   status: 'Open to work',
 };
 
 export const flightPlan = [
-  { phase: 'now', title: 'Master in Data Science', where: 'HES-SO Fribourg and Lausanne' },
+  { phase: 'now', title: 'Master in Data Science', where: 'HES-SO Lausanne' },
   { phase: 'done', title: 'Bachelor in Data Engineering', where: 'HEIA-FR' },
   { phase: 'done', title: 'Software engineer, motor control', where: 'V Advanced Technology, summer 2025' },
   { phase: 'alumni', title: 'Eurobot robotics competition', where: '2nd nationally in 2025' },
