@@ -1,7 +1,7 @@
 // Everything on the page that is a fact about Jérémy lives here (source: his CV and public GitHub repos).
 
 export const site = {
-  handle: 'Jrmy',
+  handle: 'Jérémy',
   name: 'Jérémy',
   base: 'Fribourg, CH',
   timezone: 'Europe/Zurich',
