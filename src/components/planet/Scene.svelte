@@ -43,6 +43,9 @@
     sim.kind = detail.kind;
     sim.rarity = detail.rarity;
     sim.seed = detail.seed;
+    sim.family = w.kind;
+    sim.typeId = w.type.id;
+    sim.args = args;
     const traits = [
       w.ring ? 'ringed' : '',
       w.moons.length ? `${w.moons.length} moon${w.moons.length > 1 ? 's' : ''}` : '',
@@ -282,16 +285,19 @@
   const reseed = (e: Event) => {
     // the atlas may ask for a class by name (a probe); otherwise the odds lean toward classes not seen yet
     const { kind, replay } = (e as CustomEvent<{ kind?: string; replay?: RollArgs }>).detail ?? {};
-    if (baker.phase === 'live' && sim.cool > 0 && !kind) return;
+    if (baker.phase === 'live' && sim.cool > 0 && !kind && !replay) return;
     replaying = !!replay;
     baker.reseed(kind, kind ? undefined : boost(), replay);
   };
+  // the debug panel changed a baked uniform: bake the current world again, without rolling a new one
+  const rebake = () => baker.rebake();
   onMount(() => {
     addEventListener('pointermove', onMove, { passive: true });
     addEventListener('scroll', poke, { passive: true });
     addEventListener('wheel', poke, { passive: true });
     addEventListener('touchmove', poke, { passive: true });
     addEventListener('planet:reseed', reseed);
+    addEventListener('planet:rebake', rebake);
     stages.refresh();
     return () => {
       removeEventListener('pointermove', onMove);
@@ -299,6 +305,7 @@
       removeEventListener('wheel', poke);
       removeEventListener('touchmove', poke);
       removeEventListener('planet:reseed', reseed);
+      removeEventListener('planet:rebake', rebake);
       stages.dispose();
       baker.dispose();
     };

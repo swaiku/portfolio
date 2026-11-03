@@ -1,3 +1,4 @@
+import type { RollArgs } from './archetypes';
 import type { Fact } from './facts';
 
 /** Live readout shown in the HUD; written by the scene a few times per second. */
@@ -5,6 +6,10 @@ export const sim = $state({
   seed: '------',
   name: '--',
   kind: '--',
+  /** object family and type id of the world on screen, and the arguments that rolled it (for the debug panel) */
+  family: '' as string,
+  typeId: '',
+  args: null as RollArgs | null,
   rarity: '--',
   traits: '',
   facts: [] as Fact[],

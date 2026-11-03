@@ -222,6 +222,14 @@ export class WorldBaker {
     this.phase = 'fadeout';
   }
 
+  /** Bakes the current world again from the (possibly hand-edited) uniforms. */
+  rebake() {
+    if (this.phase !== 'live') return;
+    this.fade = 0;
+    this.sky.restart(); this.planet.restart(); this.clouds.restart(); this.nebula.restart();
+    this.phase = 'sky';
+  }
+
   dispose() {
     [this.sky, this.planet, this.clouds, this.nebula, this.optics].forEach((b) => b.dispose());
   }
