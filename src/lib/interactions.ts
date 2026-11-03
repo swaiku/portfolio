@@ -100,12 +100,6 @@ export function startInteractions(tz: string) {
   }, 1000);
   off.push(() => clearInterval(quiet));
 
-  // time actually spent looking at the page: a single-page site gives analytics no pageviews to measure it from
-  const marks = new Set([15, 30, 60, 120, 300]);
-  let watched = 0;
-  const clock = setInterval(() => { if (document.visibilityState === 'visible' && marks.has(++watched)) track('engaged', { seconds: watched }); }, 1000);
-  off.push(() => clearInterval(clock));
-
   // night in the base's time zone
   const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: tz }).format(new Date()));
   if (hour >= 22 || hour < 5) fire('night');
