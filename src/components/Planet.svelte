@@ -11,11 +11,17 @@
     // ?debug opens a tweak panel; loaded on demand so it stays out of the normal bundle
     let debug = $state(false);
 
-    // WebGPU is opt-in (?gpu): TSL compiles to WGSL there, but the default WebGL2 backend is the path that is exercised daily.
+    // WebGPU first (TSL compiles to WGSL), WebGL2 when there is no real adapter; ?gl forces the WebGL2 backend.
     let backend: "pending" | "gpu" | "gl" = $state("pending");
 
     onMount(async () => {
-        const tier = probe();
+        const params = new URLSearchParams(location.search);
+        // WebGPU first; a software adapter would crawl, so WebGL2 is the better fallback there
+        const adapter = params.has("gl")
+            ? null
+            : await navigator.gpu?.requestAdapter?.().catch(() => null);
+        const gpu = !!adapter && !adapter.isFallbackAdapter;
+        const tier = probe(gpu);
         setTier(tier);
         if (tier === "off") {
             // no usable GPU: the CSS planet stands in, nothing heavy is mounted
@@ -23,12 +29,8 @@
             sim.state = "NO-GL";
             return;
         }
-        const wantGpu = new URLSearchParams(location.search).has("gpu");
-        const adapter = wantGpu
-            ? await navigator.gpu?.requestAdapter?.().catch(() => null)
-            : null;
-        backend = adapter ? "gpu" : "gl";
-        debug = new URLSearchParams(location.search).has("debug");
+        backend = gpu ? "gpu" : "gl";
+        debug = params.has("debug");
     });
 
     const createRenderer = (canvas: HTMLCanvasElement) =>

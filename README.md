@@ -15,6 +15,8 @@
     <br />
     <a href="https://github.com/swaiku/portfolio/issues">Report a bug</a>
   </p>
+
+  [![License: AGPL-3.0][license-shield]][license-url]
 </div>
 
 <details>
@@ -38,7 +40,7 @@
 
 ## About the project
 
-The personal site of Jérémy ("Swaiku"): Master's student in Data Science at HES-SO in Lausanne, working on MLOps, UAV navigation and robotics. It extends my GitHub profile with a telemetry vocabulary ("Mission briefing", "Payload modules", "Active missions", "Transmission log") around a planet that is generated and rendered live in the browser.
+The personal site of Swaiku: Master's student in Data Science at HES-SO in Lausanne, working on MLOps, UAV navigation and robotics. It extends my GitHub profile with a telemetry vocabulary ("Mission briefing", "Payload modules", "Active missions", "Transmission log") around a planet that is generated and rendered live in the browser.
 
 - Every visit rolls a new world from a seed: rocky and gas planets, stars, pulsars, black holes, nebulae and comets. Collect them all in the Atlas.
 - Terrain, atmosphere scattering, clouds and lensing are computed on the GPU with TSL shaders; no texture is downloaded.
@@ -49,10 +51,13 @@ The personal site of Jérémy ("Swaiku"): Master's student in Data Science at HE
 
 ### Built with
 
-- [Astro](https://astro.build) (static build) with [Svelte](https://svelte.dev) islands
-- [Three.js](https://threejs.org) (WebGPU renderer, WebGL 2 backend by default) and [Threlte](https://threlte.xyz)
-- [Tailwind CSS](https://tailwindcss.com) and [GSAP](https://gsap.com)
-- [Bun](https://bun.sh)
+[![Astro][astro-shield]][astro-url]
+[![Svelte][svelte-shield]][svelte-url]
+[![Three.js][three-shield]][three-url]
+[![TypeScript][ts-shield]][ts-url]
+[![Tailwind CSS][tailwind-shield]][tailwind-url]
+[![GSAP][gsap-shield]][gsap-url]
+[![Bun][bun-shield]][bun-url]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -96,7 +101,7 @@ Query parameters for development:
 | `?planet=B7B0A5` | Loads the world with this hexadecimal seed |
 | `?kind=quasar` | Forces a class of world (`quasar`, `cold` and `singularity` are black holes) |
 | `?bake=1024` | Overrides the texture size, useful on slow GPUs |
-| `?gpu` | Opts into the WebGPU backend instead of WebGL 2 |
+| `?gl` | Forces the WebGL 2 backend (WebGPU is used by default when the browser has it) |
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -124,6 +129,24 @@ The personal content is not covered by it and stays all rights reserved: the tex
 
 ## Contact
 
-Jérémy ("Swaiku") · [LinkedIn](https://www.linkedin.com/in/prinjeremy) · [GitHub](https://github.com/swaiku) · <https://jrmy.ch>
+[Swaiku](https://github.com/swaiku)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- MARKDOWN LINKS -->
+[license-shield]: https://img.shields.io/badge/License-AGPL--3.0-blue?style=for-the-badge
+[license-url]: LICENSE
+[astro-shield]: https://img.shields.io/badge/Astro-0C0F1E?style=for-the-badge&logo=astro&logoColor=FF5D01
+[astro-url]: https://astro.build
+[svelte-shield]: https://img.shields.io/badge/Svelte-FF3E00?style=for-the-badge&logo=svelte&logoColor=white
+[svelte-url]: https://svelte.dev
+[three-shield]: https://img.shields.io/badge/Three.js-000000?style=for-the-badge&logo=threedotjs&logoColor=white
+[three-url]: https://threejs.org
+[ts-shield]: https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white
+[ts-url]: https://www.typescriptlang.org
+[tailwind-shield]: https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white
+[tailwind-url]: https://tailwindcss.com
+[gsap-shield]: https://img.shields.io/badge/GSAP-0AE448?style=for-the-badge&logo=greensock&logoColor=black
+[gsap-url]: https://gsap.com
+[bun-shield]: https://img.shields.io/badge/Bun-FBF0DF?style=for-the-badge&logo=bun&logoColor=black
+[bun-url]: https://bun.sh
