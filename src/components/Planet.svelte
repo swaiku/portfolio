@@ -4,6 +4,8 @@
     import { NoToneMapping, WebGPURenderer } from "three/webgpu";
     import Scene from "./planet/Scene.svelte";
     import { createUniforms } from "../lib/planet/uniforms";
+    import { probe, quality, setTier } from "../lib/planet/quality.svelte";
+    import { sim } from "../lib/planet/sim.svelte";
 
     const u = createUniforms();
     // ?debug opens a tweak panel; loaded on demand so it stays out of the normal bundle
@@ -13,6 +15,14 @@
     let backend: "pending" | "gpu" | "gl" = $state("pending");
 
     onMount(async () => {
+        const tier = probe();
+        setTier(tier);
+        if (tier === "off") {
+            // no usable GPU: the CSS planet stands in, nothing heavy is mounted
+            document.documentElement.dataset.gl = "off";
+            sim.state = "NO-GL";
+            return;
+        }
         const wantGpu = new URLSearchParams(location.search).has("gpu");
         const adapter = wantGpu
             ? await navigator.gpu?.requestAdapter?.().catch(() => null)
@@ -32,11 +42,11 @@
 
 <div class="planet-host" aria-hidden="true">
     <div class="planet-fallback"></div>
-    {#if backend !== "pending"}
+    {#if backend !== "pending" && quality.tier !== "off"}
         <Canvas
             {createRenderer}
             renderMode="manual"
-            dpr={[1, 2]}
+            dpr={quality.dpr}
             toneMapping={NoToneMapping}
             shadows={false}
         >

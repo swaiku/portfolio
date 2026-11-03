@@ -6,6 +6,7 @@
   import { WorldBaker } from '../../lib/planet/baker';
   import { trackStages } from '../../lib/planet/stages';
   import { sim } from '../../lib/planet/sim.svelte';
+  import { BAKE, quality } from '../../lib/planet/quality.svelte';
   import { describe } from '../../lib/planet/facts';
   import { atlas, boost, COOLDOWN, markLocked, noteWorld } from '../../lib/atlas.svelte';
   import { stage } from '../../lib/interactions';
@@ -26,8 +27,7 @@
 
   const { renderer, size, advance } = useThrelte();
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const coarse = matchMedia('(pointer: coarse)').matches || innerWidth < 760;
-
+  
   let { u }: { u: Uniforms } = $props();
   let look = $state<WorldLook>({ kind: 'planet', clouds: false, ring: false, sizeK: 1, size: 1, shiftX: 0, tilt: [0.3, -0.4], moons: [], belt: null, binary: false, jets: false, beamTilt: 0.8, spin: 4.6, period: 1, companion: null, body: 1 });
 
@@ -67,7 +67,7 @@
       look = l;
       announce(w, a);
     },
-    { texture: coarse ? 2048 : 4096, reduced, restore: atlas.last, boost: boost() },
+    { texture: BAKE[quality.tier], reduced, restore: atlas.last, boost: boost() },
   );
 
   const materials = {
@@ -95,16 +95,29 @@
     poke();
   };
 
-  // frame governor: caps the frame rate instead of rendering at the screen's refresh rate
+  // frame governor: caps the frame rate instead of rendering at the screen's refresh rate, and lowers the
+  // resolution a notch whenever frames keep arriving later than the cap asks (floor: quality.floor)
   let sinceRender = 0;
+  let period = 0; // smoothed time between two renders
+  let lastRender = 0;
+  let settleAt = performance.now() + 4000; // let shaders compile and the bake finish before judging
   const govern = (dt: number) => {
     const now = performance.now();
     const active = now - lastInput < 2500 || baker.phase === 'fadein' || baker.phase === 'fadeout';
-    const interval = active ? 1 / 60 : 1 / 30;
+    const slow = quality.tier === 'low';
+    const interval = active ? (slow ? 1 / 30 : 1 / 60) : slow ? 1 / 20 : 1 / 30;
     sinceRender += dt;
     if (sinceRender < interval - 0.002) return;
     sinceRender = Math.min(Math.max(sinceRender - interval, 0), interval);
     advance();
+    if (lastRender && !document.hidden) period += ((now - lastRender) / 1000 - period) * 0.1;
+    lastRender = now;
+    if (baker.phase !== 'live' || now < settleAt || !period) return;
+    if (period > interval * 1.45 && quality.dpr > quality.floor) {
+      quality.dpr = Math.max(quality.floor, quality.dpr - 0.25);
+      settleAt = now + 3000;
+      period = 0;
+    }
   };
 
   let angle = 0;
