@@ -202,6 +202,8 @@
       y = Math.max(cur.y, -0.55);
     } else {
       scale = cur.s * look.sizeK;
+      // only a planet may sink below the page end as a horizon: a star, nebula or comet has no limb to leave in view
+      if (look.kind !== 'planet') y = Math.max(y, -0.55);
       // a binary's companion orbits wide: keep the pair above the footer at the page end
       if (look.companion) y = Math.max(y, -0.45);
     } // not blended with x: the body must not swell as it crosses the page
