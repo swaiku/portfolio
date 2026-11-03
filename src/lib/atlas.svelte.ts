@@ -1,5 +1,6 @@
 import { TYPES, type RollArgs } from './planet/archetypes';
 import { sim } from './planet/sim.svelte';
+import { track } from './track';
 
 /** What a class asks of the visitor. `hint` shows once it has been observed, `note` once it is logged. */
 export const CLASSES: Record<string, { hint: string; note: string }> = {
@@ -113,6 +114,8 @@ const log = (id: string) => {
   atlas.logged[id] = { seed: atlas.current.id === id ? atlas.current.seed : (atlas.seen[id] ?? ''), at: Date.now() };
   atlas.fresh = id;
   say('Class logged', label(id), CLASSES[id].note);
+  track('class_logged', { class: id, total: loggedCount() });
+  if (loggedCount() === TYPES.length) track('atlas_complete');
   collect();
   save();
 };
@@ -127,7 +130,10 @@ export const collect = () => {
 };
 
 /** The world on screen changed: note it, and remember how to bring it back after a reload. */
+let viaProbe = false;
 export const noteWorld = (id: string, seed: string, fresh: boolean, args: RollArgs) => {
+  if (fresh) track(viaProbe ? 'world_probe' : 'world_rolled', { class: id });
+  viaProbe = false;
   atlas.current = { id, seed };
   atlas.last = args;
   atlas.lockedAt = 0;
@@ -145,6 +151,7 @@ export const fire = (task: string) => {
   if (!def) return;
   if (!atlas.tasks[task]) {
     atlas.tasks[task] = Date.now();
+    track('task_done', { task, probe: def.probe });
     if (def.probe) {
       atlas.probes++;
       say('Probe recovered', def.label, 'Launch it from the atlas: the next survey goes to a random class you have not logged.');
@@ -168,7 +175,10 @@ export const launchProbe = () => {
   if (!atlas.probes || !pool.length) return false;
   atlas.probes--;
   save();
-  dispatchEvent(new CustomEvent('planet:reseed', { detail: { kind: pool[Math.floor(Math.random() * pool.length)].id } }));
+  const kind = pool[Math.floor(Math.random() * pool.length)].id;
+  viaProbe = true;
+  track('probe_launched', { class: kind });
+  dispatchEvent(new CustomEvent('planet:reseed', { detail: { kind } }));
   return true;
 };
 
@@ -176,6 +186,7 @@ export const launchProbe = () => {
 export const revisit = (id: string) => {
   const args = atlas.args[id];
   if (!args || atlas.current.seed === atlas.seen[id]) return false;
+  track('atlas_revisit', { class: id });
   dispatchEvent(new CustomEvent('planet:reseed', { detail: { replay: args } }));
   return true;
 };
@@ -183,6 +194,7 @@ export const revisit = (id: string) => {
 /** Open the atlas; the first time also settles the invitation to look. */
 export const openAtlas = () => {
   atlas.opened = true;
+  track('atlas_opened', { logged: loggedCount() });
   save();
   dispatchEvent(new Event('atlas:open'));
 };

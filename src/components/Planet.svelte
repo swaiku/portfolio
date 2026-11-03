@@ -6,6 +6,7 @@
     import { createUniforms } from "../lib/planet/uniforms";
     import { probe, quality, setTier } from "../lib/planet/quality.svelte";
     import { sim } from "../lib/planet/sim.svelte";
+    import { track } from "../lib/track";
 
     const u = createUniforms();
     // ?debug opens a tweak panel; loaded on demand so it stays out of the normal bundle
@@ -23,6 +24,7 @@
         const gpu = !!adapter && !adapter.isFallbackAdapter;
         const tier = probe(gpu);
         setTier(tier);
+        track("render", { backend: tier === "off" ? "none" : gpu ? "webgpu" : "webgl2", tier });
         if (tier === "off") {
             // no usable GPU: the CSS planet stands in, nothing heavy is mounted
             document.documentElement.dataset.gl = "off";

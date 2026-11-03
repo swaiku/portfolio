@@ -6,6 +6,7 @@ import body from '@fontsource/hanken-grotesk/files/hanken-grotesk-latin-400-norm
 
 interface Props { title: string; description: string }
 const { title, description } = Astro.props;
+const { PUBLIC_UMAMI_URL: umamiUrl, PUBLIC_UMAMI_ID: umamiId } = import.meta.env;
 ---
 
 <!doctype html>
@@ -30,6 +31,7 @@ const { title, description } = Astro.props;
     <link rel="preload" href={body} as="font" type="font/woff2" crossorigin />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
+    {umamiUrl && umamiId && <script defer src={`${umamiUrl}/script.js`} data-website-id={umamiId}></script>}
     <script is:inline>
       document.documentElement.dataset.js = '';
     </script>
