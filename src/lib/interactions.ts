@@ -1,5 +1,6 @@
 import { atlas, collect, fire } from './atlas.svelte';
 import { sim } from './planet/sim.svelte';
+import { track } from './track';
 
 /** Where the bodies are on screen, in CSS pixels. The scene writes it every frame; the canvas itself never gets a pointer event. */
 export const stage = { x: 0, y: 0, r: 0, cx: 0, cy: 0, cr: 0, binary: false, drag: 0 };
@@ -99,6 +100,12 @@ export function startInteractions(tz: string) {
   }, 1000);
   off.push(() => clearInterval(quiet));
 
+  // time actually spent looking at the page: a single-page site gives analytics no pageviews to measure it from
+  const marks = new Set([15, 30, 60, 120, 300]);
+  let watched = 0;
+  const clock = setInterval(() => { if (document.visibilityState === 'visible' && marks.has(++watched)) track('engaged', { seconds: watched }); }, 1000);
+  off.push(() => clearInterval(clock));
+
   // night in the base's time zone
   const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: tz }).format(new Date()));
   if (hour >= 22 || hour < 5) fire('night');
@@ -108,6 +115,11 @@ export function startInteractions(tz: string) {
   on('click', (e) => {
     const el = e.target as Element;
     if (el.closest('a[href^="mailto:"], a[href*="github.com"], a[href*="linkedin.com"]')) fire('contact');
+    const a = el.closest('a');
+    if (a && (a.protocol === 'mailto:' || a.hostname !== location.hostname)) {
+      const kind = a.protocol === 'mailto:' ? 'email' : a.hostname.replace(/^www\./, '').split('.')[0];
+      track('link_click', { kind, href: a.protocol === 'mailto:' ? 'mailto' : a.hostname + a.pathname, where: a.closest('section[id]')?.id ?? 'bar' });
+    }
     if (el.closest('[data-seed]')) {
       const now = performance.now();
       seedTaps = [...seedTaps.filter((t) => now - t < 2000), now];
