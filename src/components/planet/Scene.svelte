@@ -53,7 +53,9 @@
     ].filter(Boolean);
     sim.traits = traits.join(', ');
     sim.facts = describe(w);
-    noteWorld(w.type.id, detail.seed, !(first && restored) && !replaying, args);
+    noteWorld(w.type.id, detail.seed, !(first && restored) && !replaying, args, {
+      variant: w.tpl.id, rarity: w.type.rarity, ring: !!w.ring, moons: w.moons.length, belt: !!w.belt, binary: !!w.companion,
+    });
     first = false;
     replaying = false;
   };

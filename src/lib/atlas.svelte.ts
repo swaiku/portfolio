@@ -131,8 +131,9 @@ export const collect = () => {
 
 /** The world on screen changed: note it, and remember how to bring it back after a reload. */
 let viaProbe = false;
-export const noteWorld = (id: string, seed: string, fresh: boolean, args: RollArgs) => {
-  if (fresh) track(viaProbe ? 'world_probe' : 'world_rolled', { class: id });
+export const noteWorld = (id: string, seed: string, fresh: boolean, args: RollArgs, info: Record<string, string | number | boolean> = {}) => {
+  // misses is read before this roll updates it: 0 means the roll was not tilted toward unseen classes
+  if (fresh) track(viaProbe ? 'world_probe' : 'world_rolled', { class: id, ...info, seed, new: !atlas.seen[id], misses: atlas.misses });
   viaProbe = false;
   atlas.current = { id, seed };
   atlas.last = args;
@@ -151,7 +152,7 @@ export const fire = (task: string) => {
   if (!def) return;
   if (!atlas.tasks[task]) {
     atlas.tasks[task] = Date.now();
-    track('task_done', { task, probe: def.probe });
+    track('task_done', { task, probe: def.probe, world: atlas.current.id, seconds: Math.round(performance.now() / 1000) });
     if (def.probe) {
       atlas.probes++;
       say('Probe recovered', def.label, 'Launch it from the atlas: the next survey goes to a random class you have not logged.');
