@@ -3,6 +3,8 @@ import Base from '../layouts/Base.astro';
 import Clock from '../components/Clock.svelte';
 import FootBar from '../components/FootBar.svelte';
 import Survey from '../components/Survey.svelte';
+import Atlas from '../components/Atlas.svelte';
+import AtlasLink from '../components/AtlasLink.svelte';
 import { site, flightPlan, payload, missions, offDuty } from '../data/site';
 ---
 
@@ -13,6 +15,7 @@ import { site, flightPlan, payload, missions, offDuty } from '../data/site';
   <header class="topbar">
     <a class="brand" href="#top">swaiku</a>
     <a class="status" href="#transmission"><span class="dot" aria-hidden="true"></span>{site.status}</a>
+    <AtlasLink client:only="svelte" />
     <nav class="nav" aria-label="Sections">
       <a href="#briefing">Briefing</a>
       <a href="#payload">Payload</a>
@@ -119,5 +122,6 @@ import { site, flightPlan, payload, missions, offDuty } from '../data/site';
     </section>
   </main>
 
+  <Atlas client:only="svelte" tz={site.timezone} />
   <FootBar client:only="svelte" status={site.status} base={site.base} tz={site.timezone} github={site.github} />
 </Base>

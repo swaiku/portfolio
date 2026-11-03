@@ -4,7 +4,7 @@ import {
 } from 'three/webgpu';
 import { float } from 'three/tsl';
 import type { NodeMaterial, WebGPURenderer } from 'three/webgpu';
-import { randomSeed, rollWorld, type World } from './archetypes';
+import { randomSeed, rollWorld, type RollArgs, type World } from './archetypes';
 import { applyWorld, type Uniforms, type WorldLook } from './uniforms';
 import { createOpticalDepthBake, OPTICS_H, OPTICS_W } from './tsl/atmosphere';
 import {
@@ -101,17 +101,22 @@ export class WorldBaker {
   world: World;
   look: WorldLook;
   private pending: World | null = null;
+  private pendingArgs: RollArgs | null = null;
+  private args: RollArgs;
   private readonly reduced: boolean;
 
   constructor(
     renderer: WebGPURenderer,
     private readonly u: Uniforms,
-    private readonly onWorld: (w: World, look: WorldLook) => void,
-    opts: { texture: number; reduced: boolean },
+    private readonly onWorld: (w: World, look: WorldLook, args: RollArgs) => void,
+    opts: { texture: number; reduced: boolean; restore?: RollArgs; boost?: Record<string, number> },
   ) {
     const params = new URLSearchParams(location.search);
     const seed = parseInt(params.get('planet') ?? '', 16);
-    this.world = rollWorld(Number.isFinite(seed) ? seed : randomSeed(), params.get('kind') ?? undefined);
+    const kind = params.get('kind') ?? undefined;
+    // a reload brings the saved world back; only the reseed button rolls a new one
+    this.args = Number.isFinite(seed) ? { seed, kind } : kind ? { seed: randomSeed(), kind } : (opts.restore ?? { seed: randomSeed(), boost: opts.boost });
+    this.world = this.roll(this.args);
     this.reduced = opts.reduced;
 
     const size = Number(params.get('bake')) || opts.texture; // ?bake=1024 is a dev knob for slow GPUs
@@ -154,7 +159,7 @@ export class WorldBaker {
       strips: 1,
     }]);
     this.look = applyWorld(u, this.world);
-    onWorld(this.world, this.look);
+    onWorld(this.world, this.look, this.args);
   }
 
   /** True once every texture the world samples has been baked: drawing before then reads mip levels nothing has written yet. */
@@ -197,7 +202,8 @@ export class WorldBaker {
           this.world = this.pending;
           this.pending = null;
           this.look = applyWorld(this.u, this.world);
-          this.onWorld(this.world, this.look);
+          this.args = this.pendingArgs!;
+          this.onWorld(this.world, this.look, this.args);
           this.sky.restart(); this.planet.restart(); this.clouds.restart(); this.nebula.restart();
           this.phase = 'sky';
         }
@@ -206,9 +212,13 @@ export class WorldBaker {
     this.u.fade.value = this.fade * this.fade * (3 - 2 * this.fade);
   }
 
-  reseed() {
+  private roll = (a: RollArgs) => rollWorld(a.seed, a.kind, a.avoid, a.hue, a.boost);
+
+  /** `kind` forces a type (a probe), `boost` tilts the odds toward types not yet seen. */
+  reseed(kind?: string, boost?: Record<string, number>, replay?: RollArgs) {
     if (this.phase !== 'live') return;
-    this.pending = rollWorld(randomSeed(), undefined, this.world.tpl.id, this.world.hue);
+    this.pendingArgs = replay ?? { seed: randomSeed(), kind, avoid: this.world.tpl.id, hue: this.world.hue, boost };
+    this.pending = this.roll(this.pendingArgs);
     this.phase = 'fadeout';
   }
 

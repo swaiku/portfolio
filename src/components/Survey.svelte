@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { gsap } from 'gsap';
   import { sim } from '../lib/planet/sim.svelte';
+  import { atlas, loggedCount, openAtlas } from '../lib/atlas.svelte';
+  import { TYPES } from '../lib/planet/archetypes';
 
   const STAGES: Record<string, string> = {
     sky: 'Mapping the sky',
@@ -78,11 +80,16 @@
 
   <p class="meta action">
     {#if locked}
-      <button class="link" type="button" onclick={() => dispatchEvent(new Event('planet:reseed'))}>Survey a new world</button>
+      <button class="link" type="button" disabled={sim.cool > 0} onclick={() => dispatchEvent(new Event('planet:reseed'))}>{sim.cool > 0 ? `Recalibrating ${sim.cool}s` : 'Survey a new world'}</button>
     {:else}
       {STAGES[sim.phase] ?? 'Starting up'}…
     {/if}
   </p>
+
+  <button class="game" type="button" onclick={openAtlas}>
+    <span class="ticks" aria-hidden="true">{#each TYPES as t (t.id)}<i class:on={atlas.logged[t.id]}></i>{/each}</span>
+    <span>Collect every class of world <b>{loggedCount()}/{TYPES.length}</b></span>
+  </button>
 </div>
 
 <style>
@@ -113,6 +120,17 @@
   .k { color: var(--color-dim); }
   .v { color: var(--color-ink-2); }
   .action { margin-top: 14px; min-height: 1.6rem; }
+  .game {
+    display: inline-flex; align-items: center; gap: 12px; margin-top: 18px; padding: 8px 12px; cursor: pointer;
+    font: 400 0.72rem/1.4 var(--font-mono); color: var(--color-ink); text-align: left;
+    background: rgb(6 8 24 / 0.6); border: 1px solid var(--color-line-strong);
+  }
+  .game:hover { border-color: var(--color-amber); }
+  .game b { font-weight: 400; color: var(--color-amber); font-variant-numeric: tabular-nums; }
+  .ticks { display: inline-flex; gap: 3px; }
+  .ticks i { width: 4px; height: 12px; background: var(--color-line-strong); }
+  .ticks i.on { background: var(--color-amber); }
+  .action .link:disabled { opacity: 0.5; cursor: default; text-decoration: none; }
   .action .link { background: none; border: 0; padding: 0; cursor: pointer; }
   @media (max-width: 760px) {
     .survey { margin-top: 28px; }

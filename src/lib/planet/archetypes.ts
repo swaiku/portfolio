@@ -369,11 +369,15 @@ const pulsarPeriod = (klass: number, spread: number) =>
   Math.pow(10, klass < 0.12 ? -2.85 + spread * 0.85 : klass < 0.97 ? -1 + spread * 1.5 : 0.5 + spread * 1.38);
 
 /** `kind` forces a type id, a family ('planet', 'star', 'hole', ...) or one template id; `avoid` keeps a reroll from repeating its template. */
-export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?: number): World {
+/** Everything `rollWorld` needs to rebuild the same world, so a page reload can bring it back. */
+export interface RollArgs { seed: number; kind?: string; avoid?: string; hue?: number; boost?: Record<string, number> }
+
+export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?: number, boost?: Record<string, number>): World {
   const r = mulberry(seed);
   const weighted = (list: ObjectType[]) => {
-    let k = r() * list.reduce((n, t) => n + t.weight, 0);
-    return list.find((t) => (k -= t.weight) < 0) ?? list[list.length - 1];
+    const w = (t: ObjectType) => t.weight * (boost?.[t.id] ?? 1);
+    let k = r() * list.reduce((n, t) => n + w(t), 0);
+    return list.find((t) => (k -= w(t)) < 0) ?? list[list.length - 1];
   };
   const forcedTpl = kind ? TEMPLATES.find((t) => t.id === kind) : undefined;
   const type = TYPES.find((t) => t.id === kind)

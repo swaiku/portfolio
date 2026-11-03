@@ -7,16 +7,19 @@
   import { trackStages } from '../../lib/planet/stages';
   import { sim } from '../../lib/planet/sim.svelte';
   import { describe } from '../../lib/planet/facts';
+  import { atlas, boost, COOLDOWN, markLocked, noteWorld } from '../../lib/atlas.svelte';
+  import { stage } from '../../lib/interactions';
   import { createSkyMaterial } from '../../lib/planet/tsl/sky';
   import { createAtmosphereMaterial } from '../../lib/planet/tsl/atmosphere';
   import { createCloudMaterial, createPlanetMaterial, createRingMaterial } from '../../lib/planet/tsl/surface';
-  import type { World } from '../../lib/planet/archetypes';
+  import type { RollArgs, World } from '../../lib/planet/archetypes';
   import type { Uniforms, WorldLook } from '../../lib/planet/uniforms';
   import { createCoronaMaterial, createStarMaterial } from '../../lib/planet/tsl/star';
   import { createHoleMaterial } from '../../lib/planet/tsl/hole';
   import { createNebulaMaterial } from '../../lib/planet/tsl/space';
   import Globe from './Globe.svelte';
 
+  let lockedAt = 0;
   const FOV = 30;
   const CAMERA_Z = 10;
   const SUN = new Vector3(-0.92, 0.3, 0.18).normalize();
@@ -28,7 +31,10 @@
   let { u }: { u: Uniforms } = $props();
   let look = $state<WorldLook>({ kind: 'planet', clouds: false, ring: false, sizeK: 1, size: 1, shiftX: 0, tilt: [0.3, -0.4], moons: [], belt: null, binary: false, jets: false, beamTilt: 0.8, spin: 4.6, period: 1, companion: null, body: 1 });
 
-  const announce = (w: World) => {
+  // the first world is the saved one when there is one: a reload never rerolls
+  let first = true;
+  let replaying = false; // bringing back a world already seen: no effect on the odds
+  const announce = (w: World, args: RollArgs) => {
     document.documentElement.style.setProperty('--color-amber', w.accent);
     const detail = { name: w.name, kind: w.type.label, rarity: w.type.rarity, accent: w.accent, seed: w.seed.toString(16).toUpperCase().padStart(6, '0') };
     (window as unknown as { __planet?: unknown }).__planet = detail;
@@ -44,8 +50,12 @@
     ].filter(Boolean);
     sim.traits = traits.join(', ');
     sim.facts = describe(w);
+    noteWorld(w.type.id, detail.seed, !(first && restored) && !replaying, args);
+    first = false;
+    replaying = false;
   };
 
+  const restored = !!atlas.last;
   let group = $state<Group>();
   let baked = $state(false);
   let dome = $state<Mesh>();
@@ -53,11 +63,11 @@
   const baker = new WorldBaker(
     renderer,
     u,
-    (w, l) => {
+    (w, l, a) => {
       look = l;
-      announce(w);
+      announce(w, a);
     },
-    { texture: coarse ? 2048 : 4096, reduced },
+    { texture: coarse ? 2048 : 4096, reduced, restore: atlas.last, boost: boost() },
   );
 
   const materials = {
@@ -98,6 +108,7 @@
   };
 
   let angle = 0;
+  let drag = 0;
   let spin = 0;
   let drift = 0;
   let acc = 0;
@@ -106,6 +117,7 @@
     const s = Math.sin(a);
     m.set(c, 0, s, 0, 1, 0, -s, 0, c);
   };
+  const probe = new Vector3();
   const sunLocal = new Vector3();
   const cameraLocal = new Vector3();
   const inverseTilt = new Quaternion();
@@ -175,7 +187,11 @@
     if (look.kind === 'hole') {
       scale = Math.min(cur.s, 1.1) * look.sizeK;
       y = Math.max(cur.y, -0.55);
-    } else scale = cur.s * look.sizeK; // not blended with x: the body must not swell as it crosses the page
+    } else {
+      scale = cur.s * look.sizeK;
+      // a binary's companion orbits wide: keep the pair above the footer at the page end
+      if (look.companion) y = Math.max(y, -0.45);
+    } // not blended with x: the body must not swell as it crosses the page
     const radius = scale * look.size * Math.min(halfH, halfW);
 
     if (group) {
@@ -183,6 +199,21 @@
       group.position.set((cur.x + look.shiftX * aside * Math.sign(cur.x)) * halfW + pointer.x * 0.06, y * halfH - pointer.y * 0.04, 0);
       group.scale.setScalar(radius);
       group.updateMatrixWorld();
+      // where the bodies are on screen, for taps and drags
+      const px = (v: Vector3) => ((v.x / halfW) * 0.5 + 0.5) * size.current.width;
+      const py = (v: Vector3) => (0.5 - (v.y / halfH) * 0.5) * size.current.height;
+      const pr = (r: number) => (r / halfH) * 0.5 * size.current.height;
+      const c = group.localToWorld(look.kind === 'planet' ? probe.set(0, 0, 0) : probe.copy(u.primaryAt.value));
+      stage.x = px(c);
+      stage.y = py(c);
+      stage.r = pr(radius * (look.kind === 'planet' || look.kind === 'hole' ? 1 : u.primaryR.value || 1));
+      stage.binary = !!look.companion;
+      if (look.companion) {
+        const k = group.localToWorld(probe.copy(u.companionAt.value));
+        stage.cx = px(k);
+        stage.cy = py(k);
+        stage.cr = pr(radius * (u.companionR.value || 1));
+      }
       group.worldToLocal(cameraLocal.set(0, 0, CAMERA_Z));
       inverseTilt.copy(group.quaternion).invert();
       sunLocal.copy(SUN).applyQuaternion(inverseTilt);
@@ -195,7 +226,12 @@
       }
     }
 
+    // a mouse drag turns the body; the push it leaves behind fades out
+    drag += stage.drag;
+    stage.drag = 0;
     angle += reduced ? 0 : dt * 0.05;
+    angle -= drag * 0.4; // rotateY turns the sampling frame, so the sign is opposite to the surface
+    drag *= Math.exp(-dt * 3);
     spin += (stages.state.scroll * 0.6 - spin) * (reduced ? 1 : 1 - Math.exp(-dt * 1.6));
     drift += reduced ? 0 : dt * 0.0035;
     if (!reduced) u.clock.value += dt;
@@ -212,15 +248,27 @@
     }
 
     acc += dt;
+    if (baker.phase === 'live' && !lockedAt) {
+      lockedAt = performance.now();
+      markLocked();
+    }
+    if (baker.phase !== 'live') lockedAt = 0;
     if (acc > 0.4) {
       acc = 0;
+      sim.cool = lockedAt ? Math.max(0, Math.ceil(COOLDOWN - (performance.now() - lockedAt) / 1000)) : COOLDOWN;
       sim.state = baker.state;
       sim.phase = baker.phase;
       sim.progress = baker.progress;
     }
   });
 
-  const reseed = () => baker.reseed();
+  const reseed = (e: Event) => {
+    // the atlas may ask for a class by name (a probe); otherwise the odds lean toward classes not seen yet
+    const { kind, replay } = (e as CustomEvent<{ kind?: string; replay?: RollArgs }>).detail ?? {};
+    if (baker.phase === 'live' && sim.cool > 0 && !kind) return;
+    replaying = !!replay;
+    baker.reseed(kind, kind ? undefined : boost(), replay);
+  };
   onMount(() => {
     addEventListener('pointermove', onMove, { passive: true });
     addEventListener('scroll', poke, { passive: true });
