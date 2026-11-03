@@ -36,7 +36,7 @@
   let replaying = false; // bringing back a world already seen: no effect on the odds
   const announce = (w: World, args: RollArgs) => {
     document.documentElement.style.setProperty('--color-amber', w.accent);
-    const detail = { name: w.name, kind: w.type.label, rarity: w.type.rarity, accent: w.accent, seed: w.seed.toString(16).toUpperCase().padStart(6, '0') };
+    const detail = { name: w.name, kind: w.type.label, family: w.kind, ring: !!w.ring, rarity: w.type.rarity, accent: w.accent, seed: w.seed.toString(16).toUpperCase().padStart(6, '0') };
     (window as unknown as { __planet?: unknown }).__planet = detail;
     dispatchEvent(new CustomEvent('planet:info', { detail }));
     sim.name = detail.name;
