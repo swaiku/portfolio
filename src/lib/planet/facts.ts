@@ -1,4 +1,4 @@
-import { mulberry, NEBULA_SHAPES, type World } from './archetypes';
+import { COMET_PALETTES, mulberry, NEBULA_SHAPES, type World } from './archetypes';
 
 export interface Fact { k: string; v: string }
 
@@ -126,6 +126,7 @@ export function describe(w: World): Fact[] {
     add('Nucleus', `${lerp(r(), [0.6, 18]).toFixed(1)} km across`);
     add('Mass', `${power(10 ** lerp(r(), [12, 15.5]))} kg`);
     add('Composition', 'H₂O ice · CO₂ · dust');
+    add('Coma', COMET_PALETTES[w.comet.palette].name);
     add('Life', life(0.008, r)); // prebiotic chemistry at best
     add('Main resource', 'Water ice');
   } else {

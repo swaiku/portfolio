@@ -1,6 +1,6 @@
-import { Color, Matrix3, Vector2, Vector3 } from 'three';
+import { Color, Matrix3, Vector2, Vector3, Vector4 } from 'three';
 import { uniform } from 'three/tsl';
-import { paint, pulsarSpin, Role, starScheme, type Kind, type Moon, type World } from './archetypes';
+import { COMET_PALETTES, paint, pulsarSpin, Role, starScheme, type Kind, type Moon, type World } from './archetypes';
 import { createSkyUniforms, createTerrainUniforms } from './tsl/bake';
 
 const v3 = (x = 0, y = x, z = x) => uniform(new Vector3(x, y, z));
@@ -16,6 +16,8 @@ export const createUniforms = () => ({
   ringA: v3(), ringB: v3(),
   ringIn: uniform(1.3), ringOut: uniform(2), ringAmt: uniform(0.9), ringF1: uniform(30), ringF2: uniform(120),
   ringGaps: [v2(), v2(), v2()], hasRing: uniform(0), gas: uniform(0), gasA: v3(), gasB: v3(), nebA: v3(), nebB: v3(), nebC: v3(), nebShape: uniform(0),
+  // comets: head and ion-tail colours, then (length, ion, ion width, streaks) and (dust, bend, kink, head size), and a noise seed
+  cometHead: v3(), cometTip: v3(), cometA: uniform(new Vector4()), cometB: uniform(new Vector4()), cometSeed: uniform(0),
   // binary stars: where each star is, and the radius each one hides things with (0 when there is no companion)
   primaryAt: v3(), companionAt: v3(), primaryR: uniform(0), companionR: uniform(0), primaryScale: uniform(1),
   // a star's slow variation in brightness: amplitude, and rate in rad/s
@@ -137,9 +139,16 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
     return look;
   }
   if (w.kind === 'comet') {
+    const c = w.comet;
+    const pal = COMET_PALETTES[c.palette];
     u.sunCol.value = color(Role.ground, [0.2, 0.9]);
+    u.cometHead.value.fromArray([...pal.head]);
+    u.cometTip.value.fromArray([...pal.tip]);
+    u.cometA.value.set(c.length, c.ion, c.ionWidth, c.streak);
+    u.cometB.value.set(c.dust, c.curve, c.kink, c.head);
+    u.cometSeed.value = c.seed;
     look.sizeK = 0.5;
-    look.shiftX = 0.1;
+    look.shiftX = -0.2; // toward the middle of the screen
     return look;
   }
   if (w.kind === 'hole') {

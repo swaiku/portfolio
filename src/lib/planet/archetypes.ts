@@ -292,7 +292,30 @@ export interface World {
   temp: number; // stars: surface temperature in kelvin, which sets the colour; 0 for everything else
   light: number; // lightness shift of the whole palette
   variance: Variance;
+  comet: Comet;
 }
+
+/** What makes one comet differ from another: the gas colour of its head, and the shape and mix of its two tails. */
+export interface Comet {
+  palette: number; // index into COMET_PALETTES
+  length: number; // fraction of the full tail
+  ion: number; // brightness of the straight ion tail
+  ionWidth: number;
+  streak: number; // how strongly the ion tail splits into filaments
+  kink: number; // how far the ion tail wanders
+  dust: number; // brightness of the curved dust tail
+  curve: number; // how far the dust tail bends; the sign picks the side
+  head: number; // size of the coma
+  seed: number;
+}
+
+/** Head colour (the glow of the coma's gas) and the colour the ion tail fades into. */
+export const COMET_PALETTES = [
+  { name: 'carbon green', head: [0.08, 0.85, 0.7], tip: [0.14, 0.34, 1] },
+  { name: 'cyan', head: [0.1, 0.65, 1], tip: [0.2, 0.3, 1] },
+  { name: 'violet', head: [0.55, 0.4, 1], tip: [0.5, 0.2, 0.95] },
+  { name: 'sodium amber', head: [1, 0.55, 0.12], tip: [0.3, 0.45, 1] },
+] as const;
 
 /** How far this world strays from its template's terrain, so two worlds of one class do not share a character. */
 export interface Variance {
@@ -482,7 +505,23 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
   // rolled after everything else so older seeds keep their other traits: a fifth of stars rage, a third are nearly dormant
   const t = r();
   const tempest = t < 0.22 ? 0.8 + r() * 0.2 : t < 0.55 ? r() * 0.12 : 0.3 + r() * 0.4;
-  return { seed, name, kind: family, type, tpl, arch, moons, belt, terrainSeed, hue, scheme, sat, drift, ring, tilt, activity, size, companion, nebula, period, spots: type.jets ? 0 : spots, storms: type.jets ? 0 : storms, tempest, beamTilt, accent, temp, light, variance };
+  // rolled after the storms, so older seeds keep every other trait; most comets are green-headed, as the real ones are
+  const pal = r();
+  const comet: Comet = {
+    palette: pal < 0.5 ? 0 : pal < 0.75 ? 1 : pal < 0.9 ? 2 : 3,
+    length: 0.6 + r() * 0.4,
+    ion: 0.5 + r() * 0.9,
+    ionWidth: 0.6 + r() * 0.9,
+    streak: 0.7 + r() * 1.1,
+    kink: r() * 2,
+    dust: r() < 0.3 ? 0.1 + r() * 0.2 : 0.4 + r() * 0.8,
+    curve: (r() < 0.5 ? -1 : 1) * (0.3 + r() * 1.5),
+    head: 0.7 + r() * 0.7,
+    seed: r() * 100,
+  };
+  // the UI accent takes the colour of the comet's head, so the page matches what is on screen
+  if (family === 'comet') accent = hsl(new THREE.Color(...COMET_PALETTES[comet.palette].head).getHSL({ h: 0, s: 0, l: 0 }).h, 0.8, 0.62);
+  return { seed, name, kind: family, type, tpl, arch, moons, belt, terrainSeed, hue, scheme, sat, drift, ring, tilt, activity, size, companion, nebula, period, spots: type.jets ? 0 : spots, storms: type.jets ? 0 : storms, tempest, beamTilt, accent, temp, light, variance, comet };
 }
 
 /**

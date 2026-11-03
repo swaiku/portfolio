@@ -55,20 +55,6 @@ export const createMoonMaterial = (u: Uniforms, tint: Node, style: Node, seed: N
   return m;
 };
 
-/** Soft view-facing halo for a sphere: the coma around a comet nucleus. */
-export const createGlowMaterial = (u: Uniforms) => {
-  const m = additive(new NodeMaterial());
-  m.depthTest = false;
-  m.fragmentNode = Fn(() => {
-    const N = normalize(positionLocal);
-    const V = normalize(u.camL.sub(positionLocal));
-    const mu = max(dot(N, V), 0);
-    const col = u.ramp[4].mul(pow(mu, 2.4)).mul(0.7);
-    return vec4(float(1).sub(exp(col.mul(u.fade).negate())), 1);
-  })();
-  return m;
-};
-
 /**
  * One lighthouse beam: a thin cone seen as a shaft of light, hottest down its centre line (the view angle against the
  * surface normal gives the soft profile) and fading toward the far end.

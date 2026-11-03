@@ -1,13 +1,13 @@
 <script lang="ts">
   import { T, useTask } from '@threlte/core/webgpu';
   import {
-    CylinderGeometry, IcosahedronGeometry, InstancedMesh, Matrix3, Object3D, PlaneGeometry, Quaternion, SphereGeometry, Vector3,
+    CylinderGeometry, IcosahedronGeometry, InstancedMesh, Matrix3, Matrix4, Object3D, PlaneGeometry, SphereGeometry, Vector3,
   } from 'three/webgpu';
   import type { Group, Material, Mesh } from 'three/webgpu';
   import { uniform } from 'three/tsl';
   import { CORONA_RADIUS, createCoronaMaterial, createStarMaterial } from '../../lib/planet/tsl/star';
-  import { BEAM_LENGTH, createBeamMaterial, createGlowMaterial, createMoonMaterial, createRockMaterial } from '../../lib/planet/tsl/space';
-  import { createTailParticles } from '../../lib/planet/tsl/particles';
+  import { BEAM_LENGTH, createBeamMaterial, createMoonMaterial, createRockMaterial } from '../../lib/planet/tsl/space';
+  import { COMET_HALF_WIDTH, COMET_HEAD_OVERHANG, COMET_LENGTH, createCometMaterial } from '../../lib/planet/tsl/comet';
   import type { Uniforms, WorldLook } from '../../lib/planet/uniforms';
 
   let { look, u, materials, primary }: { look: WorldLook; u: Uniforms; materials: Record<string, Material>; primary: Group | undefined } = $props();
@@ -30,7 +30,6 @@
     });
   });
   const beltRock = createRockMaterial(u, 5.5);
-  const nucleus = createRockMaterial(u, 2.2);
   // a beam is brightest when it points at us: the lighthouse effect, kept gentle
   const beamGain = uniform(1);
   const beamGain2 = uniform(1);
@@ -40,10 +39,11 @@
   const beamDown = new CylinderGeometry(0.15, 0.012, BEAM_LENGTH, 32, 1, true).rotateX(Math.PI).translate(0, -BEAM_LENGTH / 2, 0);
   let spinner = $state<Group>();
   let spinner2 = $state<Group>();
-  const tail = createTailParticles(u);
+  const comet = createCometMaterial(u);
+  const cometSheet = new PlaneGeometry(COMET_LENGTH + COMET_HEAD_OVERHANG, COMET_HALF_WIDTH * 2)
+    .translate((COMET_LENGTH - COMET_HEAD_OVERHANG) / 2, 0, 0);
   const nebulaPlane = new PlaneGeometry(3.1 * 1.2, 3.1);
   let nebulaMesh = $state<Mesh>();
-  const coma = createGlowMaterial(u);
 
   // the second star of a binary: its own colours, spin and pulsar poles, so it need not be the primary's twin
   const compRamp = Array.from({ length: 5 }, () => uniform(new Vector3()));
@@ -104,10 +104,11 @@
   let moonMeshes: Mesh[] = [];
   let companion = $state<Mesh>();
   let companionGlow = $state<Mesh>();
-  let comaMesh = $state<Mesh>();
-  const up = new Vector3(0, 1, 0);
+  let cometMesh = $state<Mesh>();
   const away = new Vector3();
-  const q = new Quaternion();
+  const across = new Vector3();
+  const facing = new Vector3();
+  const basis = new Matrix4();
 
   useTask(() => {
     const t = u.clock.value;
@@ -143,10 +144,12 @@
     }
     if (companion) companion.position.copy(u.companionAt.value);
     if (companionGlow) companionGlow.position.copy(u.companionAt.value);
-    if (look.kind === 'comet') {
+    if (look.kind === 'comet' && cometMesh) {
+      // the sheet's x axis runs down the tail (away from the sun) and its face turns toward the camera
       away.copy(u.sunL.value).negate().normalize();
-      q.setFromUnitVectors(up, away);
-      tail.quaternion.copy(q);
+      across.crossVectors(u.camL.value, away).normalize();
+      facing.crossVectors(away, across);
+      cometMesh.quaternion.setFromRotationMatrix(basis.makeBasis(away, across, facing));
     }
   });
 </script>
@@ -175,6 +178,4 @@
 </T.Group>
 <T.Mesh bind:ref={nebulaMesh} geometry={nebulaPlane} material={materials.nebula} renderOrder={2} visible={look.kind === 'nebula'} />
 
-<T.Mesh geometry={sphere} material={nucleus} scale={0.17} renderOrder={1} visible={look.kind === 'comet'} />
-<T.Mesh bind:ref={comaMesh} geometry={sphere} material={coma} scale={0.75} renderOrder={2} visible={look.kind === 'comet'} />
-<T is={tail} renderOrder={3} visible={look.kind === 'comet'} />
+<T.Mesh bind:ref={cometMesh} geometry={cometSheet} material={comet} renderOrder={3} visible={look.kind === 'comet'} />
