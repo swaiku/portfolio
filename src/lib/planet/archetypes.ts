@@ -502,6 +502,7 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
   if (companion) companion.temp = starTemp(companion.tpl.id, r);
   if (temp) {
     ({ scheme, sat, drift } = starScheme(temp));
+    if (type.jets) sat = (1 + sat) * 0.5 - 1; // beam stars read whiter than ordinary hot stars
     light = 0;
     accent = hsl(blackbody(temp)[0], 0.75, 0.62);
   }
@@ -523,6 +524,13 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
     head: 0.7 + r() * 0.7,
     seed: r() * 100,
   };
+  // rolled last, and only for beam stars, so no other seed moves: one in six is a fancy pulsar in a colour no star has
+  if (type.jets && r() < 1 / 6) {
+    const h = r();
+    scheme = [h, h + 0.03, h - 0.03];
+    sat = 0;
+    accent = hsl(h, 0.75, 0.62);
+  }
   // the UI accent takes the colour of the comet's head, so the page matches what is on screen
   if (family === 'comet') accent = hsl(new THREE.Color(...COMET_PALETTES[comet.palette].head).getHSL({ h: 0, s: 0, l: 0 }).h, 0.8, 0.62);
   return { seed, name, kind: family, type, tpl, arch, moons, belt, terrainSeed, hue, scheme, sat, drift, ring, tilt, activity, size, companion, nebula, period, spots: type.jets ? 0 : spots, storms: type.jets ? 0 : storms, tempest, beamTilt, accent, temp, light, variance, comet };
@@ -557,7 +565,7 @@ export const starTemp = (id: string, r: () => number) => {
     case 'dwarf': return between(2500, 4200);
     case 'giant': return r() < 0.7 ? between(3000, 5200) : between(9000, 24000); // mostly red and orange, now and then a blue giant
     case 'magnetar': return between(12000, 30000);
-    case 'pulsar': return between(14000, 40000);
+    case 'pulsar': return between(7000, 40000);
     default: return between(4800, 10500);
   }
 };
