@@ -284,6 +284,9 @@ html[data-js] .reveal.in { opacity: 1; transform: none; }
   .foot .cell.end { border-bottom: 0; justify-content: flex-start; }
 }
 
+/* the downlink draws the world at a fraction of its resolution: show those blocks hard-edged, not blurred */
+html.downlink .planet-host canvas { image-rendering: pixelated; }
+
 /* ---------- bento sheet: one screen, tiles ruled on the sky, the world in the lens ---------- */
 .k {
   font-family: var(--font-display);

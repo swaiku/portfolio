@@ -16,6 +16,8 @@ export const sim = $state({
   phase: 'sky' as string,
   /** 0 → 1 while the world is being baked */
   progress: 0,
+  /** 0 → 1 while a new world comes down the downlink, block by block; 0 outside it */
+  downlink: 0,
   /** seconds until the next survey may start */
   cool: 0,
   state: 'BOOT' as 'BOOT' | 'SURVEY' | 'LOCKED' | 'NO-GL',

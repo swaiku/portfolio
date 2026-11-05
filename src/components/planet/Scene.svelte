@@ -185,6 +185,8 @@
   const THUMB = 288; // twice the largest size the atlas shows it at, for sharp screens
   const snap = () => {
     try {
+      // the body alone on black: the sky is left out of this one frame
+      if (dome) dome.visible = false;
       renderer.render(scene, camera.current);
       const c = renderer.domElement;
       const k = c.width / c.clientWidth;
@@ -194,6 +196,8 @@
       const ctx = out.getContext('2d', { willReadFrequently: true })!;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(c, (stage.x - r) * k, (stage.y - r) * k, 2 * r * k, 2 * r * k, 0, 0, THUMB, THUMB);
+      if (dome) dome.visible = true;
+      renderer.render(scene, camera.current); // put the sky back before the frame is shown
       // an all-black read means the frame was already gone: keep no picture rather than a black square
       const px = ctx.getImageData(0, 0, THUMB, THUMB).data;
       let lit = 0;
@@ -201,6 +205,46 @@
       if (lit < 4000) return;
       keepThumb(atlas.current.id, out.toDataURL('image/webp', 0.9));
     } catch { /* no picture: the atlas shows the class's mark instead */ }
+    if (dome) dome.visible = true;
+  };
+
+  // tuning away: hand the lens a copy of the frame on screen, at half size, so it can tear it apart (Lens.svelte)
+  const grab = () => {
+    try {
+      renderer.render(scene, camera.current);
+      const c = renderer.domElement;
+      const out = document.createElement('canvas');
+      out.width = Math.round(c.width / 2);
+      out.height = Math.round(c.height / 2);
+      out.getContext('2d')!.drawImage(c, 0, 0, out.width, out.height);
+      dispatchEvent(new CustomEvent('planet:frame', { detail: out }));
+    } catch { /* no copy: the lens cuts straight to static */ }
+  };
+
+  // arriving: the new world comes down like a probe's picture, in coarse blocks that sharpen. The real scene is drawn
+  // at a fraction of its resolution and scaled up without smoothing, which also makes those frames cheaper
+  const DOWNLINK = [0.04, 0.08, 0.16, 0.32, 0.6, 1];
+  const BLOCK = 0.26; // seconds per step
+  let downlink = { at: -1, base: 1, step: -1 };
+  const stepDownlink = () => {
+    if (baker.phase === 'fadein' && downlink.at < 0 && !reduced) {
+      downlink = { at: performance.now(), base: quality.dpr, step: -1 };
+      document.documentElement.classList.add('downlink');
+    }
+    if (downlink.at < 0) return;
+    const i = Math.floor((performance.now() - downlink.at) / 1000 / BLOCK);
+    if (i === downlink.step) return;
+    downlink.step = i;
+    if (i < DOWNLINK.length) {
+      quality.dpr = Math.max(0.03, downlink.base * DOWNLINK[i]);
+      sim.downlink = (i + 1) / DOWNLINK.length;
+      return;
+    }
+    quality.dpr = downlink.base;
+    sim.downlink = 0;
+    downlink.at = -1;
+    settleAt = performance.now() + 3000; // the governor must not judge the frame rate on these frames
+    document.documentElement.classList.remove('downlink');
   };
   const side = (x: number) => MathUtils.smoothstep(Math.abs(x), 0.15, 0.45);
 
@@ -298,6 +342,7 @@
       markLocked();
     }
     if (baker.phase !== 'live') lockedAt = 0;
+    stepDownlink();
     if (!lockedAt) snapped = false;
     else if (!snapped && performance.now() - lockedAt > 1200 && wantsThumb()) {
       snapped = true;
@@ -316,6 +361,7 @@
     // the dial or the atlas may ask for a class by name, or bring back a world already seen
     const { kind, replay } = (e as CustomEvent<{ kind?: string; replay?: RollArgs }>).detail ?? {};
     if (baker.phase === 'live' && sim.cool > 0 && !kind && !replay) return;
+    if (baker.phase === 'live' && !reduced) grab();
     replaying = !!replay;
     baker.reseed(kind, undefined, replay);
   };

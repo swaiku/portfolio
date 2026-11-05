@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import Clock from './Clock.svelte';
   import { sim } from '../lib/planet/sim.svelte';
   import { atlas, openAtlas, seenCount, tune } from '../lib/atlas.svelte';
@@ -17,18 +18,71 @@
   // while a world is being made the lens shows static instead of the bake; it clears as the new world fades in
   const tuning = $derived(sim.state !== 'NO-GL' && sim.phase !== 'fadein' && sim.phase !== 'live');
   const pct = $derived(Math.round(sim.progress * 100));
+  // tuning away tears the last frame apart for half a second before the static (the scene sends it: Scene.svelte)
+  let tear = $state<HTMLCanvasElement>();
+  let tearing = $state(false);
+  onMount(() => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const DUR = 560;
+    let raf = 0;
+    const onFrame = (e: Event) => {
+      const src = (e as CustomEvent<HTMLCanvasElement>).detail;
+      const cv = tear;
+      if (!cv) return;
+      const b = cv.getBoundingClientRect();
+      const k = src.width / innerWidth;
+      const W = (cv.width = Math.max(1, Math.round(b.width / 2)));
+      const H = (cv.height = Math.max(1, Math.round(b.height / 2)));
+      const ctx = cv.getContext('2d')!;
+      const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-amber') || '#ff7a3d';
+      const start = performance.now();
+      tearing = true;
+      cancelAnimationFrame(raf);
+      const frame = (now: number) => {
+        const t = (now - start) / DUR;
+        if (t >= 1) { tearing = false; return; }
+        raf = requestAnimationFrame(frame);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = '#04050b';
+        ctx.fillRect(0, 0, W, H);
+        if (t < 0.75) {
+          ctx.drawImage(src, b.left * k, b.top * k, b.width * k, b.height * k, 0, 0, W, H);
+          // bands of the picture slip sideways, more and further as the signal goes
+          for (let n = 0; n < 3 + t * 18; n++) {
+            const y = Math.random() * H;
+            const h = 2 + Math.random() * 26;
+            ctx.drawImage(cv, 0, y, W, h, (Math.random() - 0.5) * W * 0.3 * (0.3 + t), y, W, h);
+          }
+          // a colour fringe: a few thin bars inverted against the accent
+          ctx.globalCompositeOperation = 'difference';
+          ctx.fillStyle = accent;
+          for (let n = 0; n < 2 + t * 6; n++) ctx.fillRect(0, Math.random() * H, W, 1 + Math.random() * 3);
+        } else {
+          // lost: a few last streaks on black
+          ctx.fillStyle = 'rgb(236 239 251 / 0.5)';
+          for (let n = 0; n < 6; n++) ctx.fillRect(Math.random() * W * 0.5, Math.random() * H, Math.random() * W, 1);
+        }
+      };
+      raf = requestAnimationFrame(frame);
+    };
+    addEventListener('planet:frame', onFrame);
+    return () => { removeEventListener('planet:frame', onFrame); cancelAnimationFrame(raf); };
+  });
+
   const step = (d: number) => tune(TYPES[(Math.max(at, 0) + d + TYPES.length) % TYPES.length].id);
 </script>
 
 <div class="static" class:on={tuning} aria-hidden="true">
   <div class="noise"></div>
-  <div class="sweep"></div>
   <p class="readout">
     <span class="k">Tuning in</span>
     <span class="k hi target">{at >= 0 ? `${code(at)} · ${TYPES[at].label}` : 'Searching the sky'}</span>
     <span class="bar"><i style="transform: scaleX({pct / 100})"></i></span>
   </p>
 </div>
+
+<canvas bind:this={tear} class="tear" class:on={tearing} aria-hidden="true"></canvas>
+{#if sim.downlink > 0}<span class="scan" style="top: {sim.downlink * 100}%" aria-hidden="true"></span>{/if}
 
 <div class="hud">
   <p class="corner tl">
@@ -75,7 +129,7 @@
 </div>
 
 <style>
-  /* the tuning screen: dark static, a band sweeping down in the colour the world is tuning to, and the signal filling */
+  /* the tuning screen: dark static, the class being tuned to, and the signal filling */
   .static {
     position: absolute; inset: 0; overflow: hidden; display: grid; place-items: center;
     background: #04050b; opacity: 0; pointer-events: none; transition: opacity 1.1s ease;
@@ -88,18 +142,21 @@
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     animation: flicker 0.5s steps(5) infinite;
   }
-  .sweep {
-    position: absolute; left: 0; right: 0; top: 0; height: 30%;
-    background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--color-amber) 22%, transparent) 85%, var(--color-amber) 100%);
-    opacity: 0.55; animation: sweep 1.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-  }
   .readout { position: relative; margin: 0; display: grid; justify-items: center; gap: 10px; text-align: center; }
   .target { font-size: 0.8rem; }
   .bar { display: block; width: 220px; height: 2px; background: rgb(236 239 251 / 0.15); overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--color-amber); transform-origin: left; transition: transform 0.4s ease; }
   @keyframes flicker { to { background-position: 0 7px, 63px -41px; } }
-  @keyframes sweep { from { transform: translateY(-100%); } to { transform: translateY(340%); } }
-  @media (prefers-reduced-motion: reduce) { .noise, .sweep { animation: none; } .sweep { display: none; } }
+  @media (prefers-reduced-motion: reduce) { .noise { animation: none; } }
+
+  .tear { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; opacity: 0; pointer-events: none; }
+  .tear.on { opacity: 1; }
+  /* the downlink's receiving line: it steps down the lens with each sharper block of the picture */
+  .scan {
+    position: absolute; left: 0; right: 0; height: 1px; pointer-events: none;
+    background: var(--color-amber); box-shadow: 0 0 12px 1px var(--color-amber);
+    transition: top 0.26s steps(4);
+  }
 
   .hud { position: absolute; inset: 0; }
   .corner { position: absolute; margin: 0; display: flex; flex-direction: column; gap: 5px; }
