@@ -53,6 +53,22 @@ class Bake {
     return (before + this.next) / total;
   }
 
+  /** Builds every pass's pipeline before its first strip, one pass per task: compiled inside a render, each one blocks the
+   * page for a frame or several on a slow phone. compileAsync lets the GPU driver compile off the main thread. */
+  async compile() {
+    for (const p of this.passes) {
+      this.quad.material = p.material;
+      this.renderer.setRenderTarget(p.target);
+      try {
+        await this.renderer.compileAsync(this.scene, this.camera);
+      } finally {
+        this.renderer.setRenderTarget(null);
+      }
+      await new Promise((r) => setTimeout(r)); // hand the page back between passes
+    }
+    this.quad.material = this.passes[0].material;
+  }
+
   restart() {
     this.pass = 0;
     this.next = 0;
@@ -210,6 +226,11 @@ export class WorldBaker {
         break;
     }
     this.u.fade.value = this.fade * this.fade * (3 - 2 * this.fade);
+  }
+
+  /** Compiles every bake ahead of the first one (see Bake.compile). */
+  async compile() {
+    for (const b of [this.optics, this.sky, this.planet, this.clouds, this.nebula]) await b.compile();
   }
 
   private roll = (a: RollArgs) => rollWorld(a.seed, a.kind, a.avoid, a.hue, a.boost);
