@@ -18,9 +18,9 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
     <section class="tile t-id" aria-labelledby="who">
       <a class="k hi status" href="#uplink"><span class="dot" aria-hidden="true"></span>{site.status}</a>
       <div>
-        <h1 id="who">{site.handle} <span class="k">aka Swaiku</span></h1>
+        <h1 id="who">{site.handle}</h1>
         <p class="role">{site.role}</p>
-        <p class="sub">Master's student in Data Science · HES-SO Lausanne</p>
+        <p class="sub">Master's student in Data Science · HES-SO Lausanne · aka Swaiku</p>
       </div>
       <p class="lead">Machine learning, autonomous robots, and the infrastructure that keeps them flying.</p>
     </section>
@@ -88,16 +88,16 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
   <Atlas client:only="svelte" tz={site.timezone} />
 
   <script>
-    // the scene poses the world from `data-stage`: aim it at the lens, a little wider than the lens is narrow, so the tiles crop it like a porthole
+    // the scene poses the world from `data-stage`: aim it at the middle of the lens, sized to its height
     const lens = document.querySelector<HTMLElement>('[data-lens]')!;
     const aim = () => {
       const r = lens.getBoundingClientRect();
       const x = ((r.left + r.width / 2) / innerWidth - 0.5) * 2;
       const y = -((r.top + r.height / 2) / innerHeight - 0.5) * 2;
-      const s = (0.52 * Math.min(r.width, r.height)) / (0.5 * Math.min(innerWidth, innerHeight));
+      const s = (0.46 * Math.min(r.width, r.height)) / (0.5 * Math.min(innerWidth, innerHeight));
       lens.dataset.stage = [x, y, s].map((v) => v.toFixed(3)).join(',');
       // the same aim for the CSS stand-in shown when there is no GPU
-      const d = 1.04 * Math.min(r.width, r.height);
+      const d = 0.92 * Math.min(r.width, r.height);
       const root = document.documentElement.style;
       root.setProperty('--lens-l', `${r.left + r.width / 2 - d / 2}px`);
       root.setProperty('--lens-t', `${r.top + r.height / 2 - d / 2}px`);
