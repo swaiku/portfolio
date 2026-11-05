@@ -190,7 +190,7 @@
       renderer.render(scene, camera.current);
       const c = renderer.domElement;
       const k = c.width / c.clientWidth;
-      const r = stage.r * 1.5; // room for the atmosphere and a ring
+      const r = stage.r * 2; // the whole body: atmosphere, rings and close moons
       const out = document.createElement('canvas');
       out.width = out.height = THUMB;
       const ctx = out.getContext('2d', { willReadFrequently: true })!;
@@ -209,7 +209,7 @@
   };
 
   // tuning away: hand the lens a copy of the frame on screen, at half size, so it can tear it apart (Lens.svelte)
-  const grab = () => {
+  const grab = (kind?: string) => {
     try {
       renderer.render(scene, camera.current);
       const c = renderer.domElement;
@@ -217,7 +217,7 @@
       out.width = Math.round(c.width / 2);
       out.height = Math.round(c.height / 2);
       out.getContext('2d')!.drawImage(c, 0, 0, out.width, out.height);
-      dispatchEvent(new CustomEvent('planet:frame', { detail: out }));
+      dispatchEvent(new CustomEvent('planet:frame', { detail: { frame: out, kind } }));
     } catch { /* no copy: the lens cuts straight to static */ }
   };
 
@@ -351,10 +351,19 @@
     // the dial or the atlas may ask for a class by name, or bring back a world already seen
     const { kind, replay } = (e as CustomEvent<{ kind?: string; replay?: RollArgs }>).detail ?? {};
     if (baker.phase === 'live' && sim.cool > 0 && !kind && !replay) return;
-    if (baker.phase === 'live' && !reduced) grab();
-    replaying = !!replay;
-    baker.reseed(kind, undefined, replay);
+    const go = () => {
+      pending = 0;
+      replaying = !!replay;
+      baker.reseed(kind, undefined, replay);
+    };
+    clearTimeout(pending);
+    // the old world tears, then the lens holds on the tuning screen a moment before the new one starts
+    if (baker.phase === 'live' && !reduced) {
+      grab(kind);
+      pending = window.setTimeout(go, 1000);
+    } else go();
   };
+  let pending = 0;
   // the debug panel changed a baked uniform: bake the current world again, without rolling a new one
   const rebake = () => baker.rebake();
   onMount(() => {

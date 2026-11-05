@@ -110,9 +110,10 @@
   .cell.here { outline: 1px solid var(--color-amber); z-index: 1; }
   .top { margin: 0; display: flex; justify-content: space-between; }
   .rarity { color: var(--r); }
-  .pic { display: grid; place-items: center; height: clamp(96px, 14vh, 144px); }
-  /* the picture keeps its glow and fades into the cell instead of being cut to a disc */
-  .pic img { height: 100%; width: auto; aspect-ratio: 1; mask-image: radial-gradient(circle, #000 52%, transparent 70%); }
+  /* a fixed square: the picture never grows past it into the text below */
+  .pic { --s: clamp(96px, 14vh, 144px); display: grid; place-items: center; height: var(--s); }
+  /* the picture is the body on black: lighten drops the black so it sits straight on the cell, uncropped */
+  .pic img { width: var(--s); height: var(--s); object-fit: contain; mix-blend-mode: lighten; }
   /* no picture yet: a dotted ring for a class never met, a solid one in its rarity colour once met */
   .mark { width: clamp(56px, 8vh, 84px); aspect-ratio: 1; border-radius: 50%; border: 1px dashed rgb(236 239 251 / 0.3); }
   .seen .mark { border: 1px solid var(--r); background: radial-gradient(circle at 32% 30%, color-mix(in srgb, var(--r) 45%, transparent), transparent 70%); }

@@ -17,6 +17,18 @@
   const ready = $derived(sim.state === 'LOCKED' || sim.state === 'SURVEY');
   // while a world is being made the lens shows static instead of the bake; it clears as the new world fades in
   const tuning = $derived(sim.state !== 'NO-GL' && sim.phase !== 'fadein' && sim.phase !== 'live');
+  // between the tear and the start of the new world the screen holds, already naming the class it tunes to
+  let held = $state(false);
+  let heldKind = $state<string | undefined>();
+  $effect(() => {
+    if (sim.phase !== 'live') held = false;
+  });
+  // the needle and the readout move to the class asked for at once, before the new world exists
+  const aim = $derived(held && heldKind ? TYPES.findIndex((t) => t.id === heldKind) : at);
+  const target = $derived.by(() => {
+    const i = held ? TYPES.findIndex((t) => t.id === heldKind) : at;
+    return i >= 0 ? `${code(i)} · ${TYPES[i].label}` : 'Searching the sky';
+  });
   const pct = $derived(Math.round(sim.progress * 100));
   // tuning away tears the last frame apart for half a second before the static (the scene sends it: Scene.svelte)
   let tear = $state<HTMLCanvasElement>();
@@ -26,7 +38,10 @@
     const DUR = 560;
     let raf = 0;
     const onFrame = (e: Event) => {
-      const src = (e as CustomEvent<HTMLCanvasElement>).detail;
+      const { frame: src, kind } = (e as CustomEvent<{ frame: HTMLCanvasElement; kind?: string }>).detail;
+      held = true;
+      heldKind = kind;
+      setTimeout(() => (held = false), 4000); // never stuck if the new world does not start
       const cv = tear;
       if (!cv) return;
       const b = cv.getBoundingClientRect();
@@ -72,12 +87,12 @@
   const step = (d: number) => tune(TYPES[(Math.max(at, 0) + d + TYPES.length) % TYPES.length].id);
 </script>
 
-<div class="static" class:on={tuning} aria-hidden="true">
+<div class="static" class:on={tuning || held} aria-hidden="true">
   <div class="noise"></div>
   <p class="readout">
     <span class="k">Tuning in</span>
-    <span class="k hi target">{at >= 0 ? `${code(at)} · ${TYPES[at].label}` : 'Searching the sky'}</span>
-    <span class="bar"><i style="transform: scaleX({pct / 100})"></i></span>
+    <span class="k hi target">{target}</span>
+    <span class="bar"><i style="transform: scaleX({held ? 0 : pct / 100})"></i></span>
   </p>
 </div>
 
@@ -98,7 +113,7 @@
     <div class="dial" role="group" aria-label="Tune the lens to a class of world">
       <p class="k hi now" aria-live="polite">{locked && at >= 0 ? `${code(at)} · ${TYPES[at].label}` : 'Tuning…'}</p>
       <div class="scale">
-        {#if at >= 0}<span class="needle" class:busy={!locked} style="--i: {at}" aria-hidden="true"></span>{/if}
+        {#if aim >= 0}<span class="needle" class:busy={!locked || held} style="--i: {aim}" aria-hidden="true"></span>{/if}
         <button type="button" class="step" disabled={!ready} onclick={() => step(-1)} aria-label="Previous class">‹</button>
         {#each TYPES as t, i (t.id)}
           {@const seen = !!atlas.seen[t.id]}
@@ -148,8 +163,8 @@
   @keyframes flicker { to { background-position: 0 7px, 63px -41px; } }
   @media (prefers-reduced-motion: reduce) { .noise { animation: none; } }
 
-  .tear { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; opacity: 0; pointer-events: none; }
-  .tear.on { opacity: 1; }
+  .tear { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+  .tear.on { opacity: 1; transition: none; }
 
   .hud { position: absolute; inset: 0; }
   .corner { position: absolute; margin: 0; display: flex; flex-direction: column; gap: 5px; }
