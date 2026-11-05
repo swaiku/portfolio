@@ -1,22 +1,18 @@
 <script lang="ts">
-  import Probe from './Probe.svelte';
   import { onMount } from 'svelte';
   import { TYPES, type Rarity } from '../lib/planet/archetypes';
-  import { atlas, CLASSES, TASKS, TASK_HINTS, TASK_HOW, dismissToast, launchProbe, loggedCount, probeTargets, revisit } from '../lib/atlas.svelte';
+  import { atlas, CLASSES, dismissToast, revisit, seenCount, tune } from '../lib/atlas.svelte';
   import { startInteractions } from '../lib/interactions';
 
-  let { tz }: { tz: string } = $props();
   let dlg = $state<HTMLDialogElement>();
 
   const RARITIES: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
   const groups = RARITIES.map((r) => ({ rarity: r, types: TYPES.filter((t) => t.rarity === r) }));
   const designation = (id: string) => `CL-${String(TYPES.findIndex((t) => t.id === id) + 1).padStart(2, '0')}`;
-  const stateOf = (id: string) => (atlas.logged[id] ? 'logged' : atlas.seen[id] ? 'observed' : 'unsurveyed');
-  const day = (t: number) => new Date(t).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-  const tasks = Object.entries(TASKS).filter(([, t]) => t.probe);
 
-  const launch = () => {
-    if (launchProbe()) dlg?.close();
+  const goTune = (id: string) => {
+    tune(id);
+    dlg?.close();
   };
   const goTo = (id: string) => {
     if (revisit(id)) dlg?.close();
@@ -29,7 +25,7 @@
   onMount(() => {
     const open = () => { atlas.opened = true; dlg?.showModal(); };
     addEventListener('atlas:open', open);
-    const stop = startInteractions(tz);
+    const stop = startInteractions();
     return () => {
       removeEventListener('atlas:open', open);
       stop();
@@ -42,60 +38,39 @@
     <header class="head">
       <div>
         <h2 id="atlas-title">Star atlas</h2>
-        <p class="count"><b>{loggedCount()}</b> / {TYPES.length} classes logged</p>
+        <p class="count"><b>{seenCount()}</b> / {TYPES.length} classes seen</p>
       </div>
       <div class="tools">
-        <button type="button" class="probe" disabled={!atlas.probes || !probeTargets().length} onclick={launch}>
-          Launch probe <b>×{atlas.probes}</b>
-        </button>
         <button type="button" class="close" onclick={close} aria-label="Close the atlas">Close</button>
       </div>
     </header>
-    <p class="intro">Seeing a world only notes it. A class is logged when you do what it asks while it is on screen. A probe sends the next survey to a class you have not logged, picked at random. Legendary classes open up once their collection is done.</p>
+    <p class="intro">Every class you meet is noted here with the seed of the first world you saw it in, so you can bring that world back. Tune the lens to any class from the dial under the world, or from here.</p>
 
     {#each groups as g (g.rarity)}
       <section class="group" data-rarity={g.rarity} aria-label={g.rarity}>
         <h3>{g.rarity}</h3>
         <ul>
           {#each g.types as t (t.id)}
-            {@const st = stateOf(t.id)}
-            <li class="row" data-state={st}>
+            {@const seen = !!atlas.seen[t.id]}
+            <li class="row" data-state={seen ? 'seen' : 'unsurveyed'}>
               <span class="id">{designation(t.id)}</span>
               <span class="body">
-                <span class="name">{st === 'unsurveyed' ? 'Unsurveyed class' : t.label}</span>
-                {#if st === 'observed'}<span class="line">{CLASSES[t.id].hint}</span>{/if}
-                {#if st === 'logged'}<span class="line">{CLASSES[t.id].note}</span>{/if}
-                {#if st !== 'unsurveyed'}
+                <span class="name">{seen ? t.label : 'Unsurveyed class'}</span>
+                {#if seen}
+                  <span class="line">{CLASSES[t.id]}</span>
                   <button type="button" class="seed" onclick={() => goTo(t.id)} disabled={atlas.current.seed === atlas.seen[t.id]} title="Bring this world back">
                     Seed {atlas.seen[t.id]} ↻
                   </button>
                 {/if}
               </span>
-              <span class="state" class:stamp={atlas.fresh === t.id}>
-                {st === 'logged' ? `Logged ${day(atlas.logged[t.id].at)}` : st}
-              </span>
+              <button type="button" class="state" class:stamp={atlas.fresh === t.id} onclick={() => goTune(t.id)}>
+                {seen ? 'Seen' : 'Tune in'} →
+              </button>
             </li>
           {/each}
         </ul>
       </section>
     {/each}
-
-    <section class="group notes" aria-label="Field notes">
-      <h3>Field notes</h3>
-      <ul>
-        {#each tasks as [id, t] (id)}
-          {@const done = !!atlas.tasks[id]}
-          <li class="row" data-state={done ? 'logged' : 'unsurveyed'}>
-            <span class="id"><Probe /></span>
-            <span class="body">
-              <span class="name">{done || !t.hidden ? t.label : '???'}</span>
-              <span class="line">{done ? `Probe recovered. ${TASK_HOW[id] ?? ''}` : t.hidden ? '' : TASK_HINTS[id]}</span>
-            </span>
-            <span class="state">{done ? `Done ${day(atlas.tasks[id])}` : 'open'}</span>
-          </li>
-        {/each}
-      </ul>
-    </section>
 
     <p class="intro rolls">Rolls since a new class: <b>{atlas.misses}</b>. The longer it runs, the likelier an unseen class turns up.</p>
   </div>
@@ -139,8 +114,7 @@
   .group[data-rarity='rare'] { --r: #8fc7ff; }
   .group[data-rarity='epic'] { --r: #c39bff; }
   .group[data-rarity='legendary'] { --r: #ffb84d; }
-  .notes { --r: var(--color-dim); }
-  h3 { margin: 0 0 10px; font: 500 0.7rem/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--r); }
+    h3 { margin: 0 0 10px; font: 500 0.7rem/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--r); }
   ul { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--color-line); }
   .row {
     display: grid; grid-template-columns: 3.4rem 1fr auto; align-items: center; gap: 4px 14px;
@@ -152,8 +126,9 @@
   .line { color: var(--color-dim); line-height: 1.6; max-width: 54ch; }
   .state { color: var(--color-dim); text-transform: capitalize; white-space: nowrap; }
   .row[data-state='unsurveyed'] .name { color: var(--color-dim); }
-  .row[data-state='observed'] .state { color: var(--r); }
-  .row[data-state='logged'] .state { color: var(--r); border: 1px solid currentColor; padding: 3px 9px; letter-spacing: 0.04em; }
+  .state { font: inherit; background: none; border: 0; padding: 6px 0; cursor: pointer; }
+  .state:hover { color: var(--color-amber); }
+  .row[data-state='seen'] .state { color: var(--r); border: 1px solid currentColor; padding: 3px 9px; letter-spacing: 0.04em; }
   .seed {
     justify-self: start; padding: 0; font: inherit; color: var(--color-dim); background: none; border: 0;
     text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-variant-numeric: tabular-nums;

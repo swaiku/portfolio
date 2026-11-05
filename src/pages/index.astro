@@ -20,7 +20,7 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
       <div>
         <h1 id="who">{site.handle}</h1>
         <p class="role">{site.role}</p>
-        <p class="sub">Master's student in Data Science · HES-SO Lausanne · aka Swaiku</p>
+        <p class="sub">Master's student in Data Science · HES-SO Lausanne</p>
       </div>
       <p class="lead">Machine learning, autonomous robots, and the infrastructure that keeps them flying.</p>
     </section>
@@ -85,7 +85,7 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
     </section>
   </main>
 
-  <Atlas client:only="svelte" tz={site.timezone} />
+  <Atlas client:only="svelte" />
 
   <script>
     // the scene poses the world from `data-stage`: aim it at the middle of the lens, sized to its height
