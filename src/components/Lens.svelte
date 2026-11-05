@@ -138,7 +138,8 @@
       {sim.cool > 0 ? `Recalibrating ${sim.cool}s` : 'Roll a new world ↻'}
     </button>
   {:else if sim.state !== 'NO-GL'}
-    <span class="k corner br" aria-live="polite">Signal <span class="num">{pct}%</span></span>
+    <!-- not live: a screen reader would read every percent; the dial's label announces the world once it is in -->
+    <span class="k corner br">Signal <span class="num">{pct}%</span></span>
   {/if}
 </div>
 

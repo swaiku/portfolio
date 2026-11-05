@@ -63,6 +63,12 @@ const say = (title: string, name: string, line: string) => {
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => (atlas.toast = null), 8000);
 };
+/** The toast waits while it is pointed at or focused, then leaves a moment after. */
+export const holdToast = () => clearTimeout(toastTimer);
+export const releaseToast = () => {
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => (atlas.toast = null), 4000);
+};
 export const dismissToast = () => {
   clearTimeout(toastTimer);
   atlas.toast = null;

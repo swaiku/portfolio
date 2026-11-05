@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { TYPES } from '../lib/planet/archetypes';
-  import { atlas, CLASSES, dismissToast, revisit, seenCount, tune } from '../lib/atlas.svelte';
+  import { atlas, CLASSES, dismissToast, holdToast, releaseToast, revisit, seenCount, tune } from '../lib/atlas.svelte';
   import { startInteractions } from '../lib/interactions';
 
   let dlg = $state<HTMLDialogElement>();
@@ -65,7 +65,10 @@
 </dialog>
 
 {#if atlas.toast}
-  <div class="toast" role="status">
+  <div class="toast" role="status" onpointerenter={holdToast} onpointerleave={(e) => !e.currentTarget.contains(document.activeElement) && releaseToast()}
+    onfocusin={holdToast}
+    onfocusout={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && !e.currentTarget.matches(':hover') && releaseToast()}
+  >
     <p class="k t-title">{atlas.toast.title}</p>
     <p class="t-name">{atlas.toast.name}</p>
     <p class="t-line">{atlas.toast.line}</p>
