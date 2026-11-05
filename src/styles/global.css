@@ -300,9 +300,10 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
 .k {
   font-family: var(--font-display);
   font-weight: 500;
-  font-size: 0.66rem;
+  /* 12px is the floor: years, missions flown and plan phases are read, not glanced at */
+  font-size: 0.75rem;
   line-height: 1.5;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #9095b0;
   margin: 0;
@@ -345,7 +346,7 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
 .t-uplink { grid-column: 11 / 13; grid-row: 5 / 6; justify-content: center; gap: 8px; background: var(--color-amber); outline-color: var(--color-amber); color: #120a06; }
 .t-uplink .k { color: #120a06; }
 .t-uplink .call { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
-.t-uplink .k { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.t-uplink .k { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.8rem; }
 .t-uplink a { white-space: nowrap; }
 .t-uplink a { color: #120a06; text-decoration: none; padding: 4px 0; }
 .t-uplink a:hover { text-decoration: underline; text-underline-offset: 4px; }
