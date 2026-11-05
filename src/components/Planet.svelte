@@ -1,19 +1,18 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { Canvas } from "@threlte/core/webgpu";
-    import { NoToneMapping, WebGPURenderer } from "three/webgpu";
-    import Scene from "./planet/Scene.svelte";
-    import { createUniforms } from "../lib/planet/uniforms";
+    import type { Uniforms } from "../lib/planet/uniforms";
     import { probe, quality, setTier } from "../lib/planet/quality.svelte";
     import { sim } from "../lib/planet/sim.svelte";
     import { track } from "../lib/track";
 
-    const u = createUniforms();
+    // filled by the viewport once it is loaded; only the debug panel reads it here
+    let u = $state<Uniforms>();
     // ?debug opens a tweak panel; loaded on demand so it stays out of the normal bundle
     let debug = $state(false);
 
     // WebGPU first (TSL compiles to WGSL), WebGL2 when there is no real adapter; ?gl forces the WebGL2 backend.
     let backend: "pending" | "gpu" | "gl" = $state("pending");
+    // three.js and the scene are most of the page's weight: fetched only once a usable GPU is found
 
     onMount(async () => {
         const params = new URLSearchParams(location.search);
@@ -34,32 +33,18 @@
         backend = gpu ? "gpu" : "gl";
         debug = params.has("debug");
     });
-
-    const createRenderer = (canvas: HTMLCanvasElement) =>
-        new WebGPURenderer({
-            canvas,
-            antialias: false,
-            forceWebGL: backend === "gl",
-            powerPreference: "high-performance",
-        });
 </script>
 
 <div class="planet-host" aria-hidden="true">
     <div class="planet-fallback"></div>
     {#if backend !== "pending" && quality.tier !== "off"}
-        <Canvas
-            {createRenderer}
-            renderMode="manual"
-            dpr={quality.dpr}
-            toneMapping={NoToneMapping}
-            shadows={false}
-        >
-            <Scene {u} />
-        </Canvas>
+        {#await import("./planet/Viewport.svelte") then m}
+            <m.default {backend} bind:u />
+        {/await}
     {/if}
 </div>
 
-{#if debug}
+{#if debug && u}
     {#await import("./Debug.svelte") then m}
         <m.default {u} />
     {/await}

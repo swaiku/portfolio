@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { TYPES } from '../lib/planet/archetypes';
+  import { TYPES } from '../lib/planet/catalog';
   import { atlas, CLASSES, dismissToast, holdToast, releaseToast, revisit, seenCount, tune } from '../lib/atlas.svelte';
   import { startInteractions } from '../lib/interactions';
 

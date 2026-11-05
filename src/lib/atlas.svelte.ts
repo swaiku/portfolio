@@ -1,4 +1,5 @@
-import { TYPES, type RollArgs } from './planet/archetypes';
+import { TYPES } from './planet/catalog';
+import type { RollArgs } from './planet/archetypes';
 import { track } from './track';
 
 /** A line about each class, shown once it has been seen. */

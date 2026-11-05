@@ -3,7 +3,7 @@
   import Clock from './Clock.svelte';
   import { sim } from '../lib/planet/sim.svelte';
   import { atlas, openAtlas, seenCount, tune } from '../lib/atlas.svelte';
-  import { TYPES } from '../lib/planet/archetypes';
+  import { TYPES } from '../lib/planet/catalog';
 
   let { base, coords, tz }: { base: string; coords: string; tz: string } = $props();
 
