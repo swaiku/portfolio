@@ -5,6 +5,8 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   site: 'https://jrmy.ch',
   integrations: [svelte()],
+  // the page's CSS is ~7 kB gzipped: inlined, it no longer holds up the first paint
+  build: { inlineStylesheets: 'always' },
   vite: {
     plugins: [tailwindcss()],
     // pre-bundle up front so the dev server doesn't re-optimise (and reload the page) mid-bake
