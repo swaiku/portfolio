@@ -2,6 +2,7 @@
 
 export const site = {
   handle: 'Jérémy',
+  role: 'Data engineer', // TODO: confirm the title to lead with
   name: 'Jérémy',
   base: 'Fribourg, CH',
   timezone: 'Europe/Zurich',
@@ -54,8 +55,6 @@ export const missions: { name: string; where: string; brief: string; tags: strin
   },
   {
     name: 'HES-SO at Paléo',
-    year: '2024',
-    line: "Running the festival's science stand, three editions so far.",
     where: 'Festival outreach, 2024-2026',
     brief:
       'Running the HES-SO stand for three editions: solar protection in 2024, chronic pain and electrostimulators in 2025, Chladni figures in 2026.',

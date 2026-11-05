@@ -1,9 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
-import Clock from '../components/Clock.svelte';
 import Lens from '../components/Lens.svelte';
 import Atlas from '../components/Atlas.svelte';
-import AtlasLink from '../components/AtlasLink.svelte';
 import { site, flightPlan, missions, instruments, alsoAboard, offDuty } from '../data/site';
 
 const featured = missions.filter((m) => m.line);
@@ -16,31 +14,19 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
   title="Jérémy · Data science and robotics"
   description="Personal site of Jérémy (Swaiku): Master's student in Data Science at HES-SO in Lausanne, working on MLOps, UAV navigation and self-hosted infrastructure."
 >
-  <header class="bar">
-    <a class="k hi status" href="#uplink"><span class="dot" aria-hidden="true"></span>{site.status}</a>
-    <p class="k station">Ground station · {site.base.split(',')[0]} · {site.coords} · <Clock client:idle tz={site.timezone} /></p>
-    <nav class="k links" aria-label="Elsewhere">
-      <AtlasLink client:only="svelte" />
-      <a href={site.github} rel="noopener">GitHub ↗</a>
-      {site.linkedin && <a href={site.linkedin} rel="noopener">LinkedIn ↗</a>}
-    </nav>
-  </header>
-
   <main id="top" class="sheet">
     <section class="tile t-id" aria-labelledby="who">
-      <span class="k no" aria-hidden="true">01</span>
-      <div class="name">
-        <h1 id="who">{site.handle}</h1>
-        <span class="k">aka Swaiku</span>
-      </div>
+      <a class="k hi status" href="#uplink"><span class="dot" aria-hidden="true"></span>{site.status}</a>
       <div>
-        <p class="lead">Machine learning, autonomous robots, and the infrastructure that keeps them flying.</p>
+        <h1 id="who">{site.handle} <span class="k">aka Swaiku</span></h1>
+        <p class="role">{site.role}</p>
         <p class="sub">Master's student in Data Science · HES-SO Lausanne</p>
       </div>
+      <p class="lead">Machine learning, autonomous robots, and the infrastructure that keeps them flying.</p>
     </section>
 
     <section id="missions" class="tile t-missions" aria-labelledby="missions-h">
-      <span class="k no" aria-hidden="true">02</span>
+      <span class="k no" aria-hidden="true">01</span>
       <h2 id="missions-h" class="k hi">Missions</h2>
       <ol class="missions">
         {featured.map((m) => (
@@ -58,7 +44,7 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
     </section>
 
     <div class="lens" data-lens>
-      <Lens client:only="svelte" />
+      <Lens client:only="svelte" base={site.base.split(',')[0]} coords={site.coords} tz={site.timezone} />
     </div>
 
     <section class="tile t-log" aria-labelledby="log-h">
@@ -67,7 +53,7 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
     </section>
 
     <section id="payload" class="tile t-payload" aria-labelledby="payload-h">
-      <span class="k no" aria-hidden="true">03</span>
+      <span class="k no" aria-hidden="true">02</span>
       <h2 id="payload-h" class="k hi">Payload <span class="k">· flown on</span></h2>
       <dl class="instruments">
         {instruments.map((i) => (<><dt>{i.tools}</dt><dd class="k">{i.flew}</dd></>))}
@@ -76,7 +62,7 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
     </section>
 
     <section class="tile t-plan" aria-labelledby="plan-h">
-      <span class="k no" aria-hidden="true">04</span>
+      <span class="k no" aria-hidden="true">03</span>
       <h2 id="plan-h" class="k hi">Flight plan</h2>
       <ol class="plan">
         {plan.map((s) => (
@@ -90,25 +76,28 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
       <p>{offDuty.map((o) => o.k).join(' · ')}</p>
     </section>
 
-    <a id="uplink" class="tile t-uplink" href={site.linkedin || site.github} rel="noopener">
-      <span class="call">Open a channel</span>
-      <span class="k">{site.linkedin ? 'LinkedIn ↗' : 'GitHub ↗'}</span>
-    </a>
+    <section id="uplink" class="tile t-uplink" aria-labelledby="uplink-h">
+      <h2 id="uplink-h" class="call">Open a channel</h2>
+      <p class="k">
+        {site.linkedin && <a href={site.linkedin} rel="noopener">LinkedIn ↗</a>}
+        <a href={site.github} rel="noopener">GitHub ↗</a>
+      </p>
+    </section>
   </main>
 
   <Atlas client:only="svelte" tz={site.timezone} />
 
   <script>
-    // the scene poses the world from `data-stage`; aim it at the lens, sized to fit inside it
+    // the scene poses the world from `data-stage`: aim it at the lens, a little wider than the lens is narrow, so the tiles crop it like a porthole
     const lens = document.querySelector<HTMLElement>('[data-lens]')!;
     const aim = () => {
       const r = lens.getBoundingClientRect();
       const x = ((r.left + r.width / 2) / innerWidth - 0.5) * 2;
       const y = -((r.top + r.height / 2) / innerHeight - 0.5) * 2;
-      const s = (0.4 * Math.min(r.width, r.height)) / (0.5 * Math.min(innerWidth, innerHeight));
+      const s = (0.52 * Math.min(r.width, r.height)) / (0.5 * Math.min(innerWidth, innerHeight));
       lens.dataset.stage = [x, y, s].map((v) => v.toFixed(3)).join(',');
       // the same aim for the CSS stand-in shown when there is no GPU
-      const d = 0.8 * Math.min(r.width, r.height);
+      const d = 1.04 * Math.min(r.width, r.height);
       const root = document.documentElement.style;
       root.setProperty('--lens-l', `${r.left + r.width / 2 - d / 2}px`);
       root.setProperty('--lens-t', `${r.top + r.height / 2 - d / 2}px`);
