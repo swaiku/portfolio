@@ -22,7 +22,6 @@ interface Save {
   seen: Record<string, string>;
   /** a small picture of that first world, taken once it is on screen (a data URL) */
   thumbs: Record<string, string>;
-  misses: number;
   last?: RollArgs;
   opened?: boolean;
   /** when the world on screen finished baking; a reload inside the cooldown brings it back, after it rolls a new one */
@@ -34,7 +33,7 @@ interface Save {
 /** seconds a locked world stays before the next survey, or a reload, may replace it */
 export const COOLDOWN = 8;
 const KEY = 'swaiku:atlas:v1';
-const EMPTY = (): Save => ({ seen: {}, thumbs: {}, misses: 0, args: {} });
+const EMPTY = (): Save => ({ seen: {}, thumbs: {}, args: {} });
 const load = (): Save => {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null');
@@ -54,8 +53,8 @@ export const atlas = $state({
 });
 
 const save = () => {
-  const { seen, thumbs, misses, last, args, opened, lockedAt } = atlas;
-  try { localStorage.setItem(KEY, JSON.stringify({ seen, thumbs, misses, last, args, opened, lockedAt })); } catch { /* storage unavailable */ }
+  const { seen, thumbs, last, args, opened, lockedAt } = atlas;
+  try { localStorage.setItem(KEY, JSON.stringify({ seen, thumbs, last, args, opened, lockedAt })); } catch { /* storage unavailable */ }
 };
 
 let toastTimer = 0;
@@ -75,8 +74,7 @@ const label = (id: string) => TYPES.find((t) => t.id === id)?.label ?? id;
 /** The world on screen changed: note it, and remember how to bring it back after a reload. */
 let viaTune = false;
 export const noteWorld = (id: string, seed: string, fresh: boolean, args: RollArgs, info: Record<string, string | number | boolean> = {}) => {
-  // misses is read before this roll updates it: 0 means the roll was not tilted toward unseen classes
-  if (fresh) track(viaTune ? 'world_tuned' : 'world_rolled', { class: id, ...info, seed, new: !atlas.seen[id], misses: atlas.misses });
+  if (fresh) track(viaTune ? 'world_tuned' : 'world_rolled', { class: id, ...info, seed, new: !atlas.seen[id] });
   viaTune = false;
   atlas.current = { id, seed };
   atlas.last = args;
@@ -88,15 +86,8 @@ export const noteWorld = (id: string, seed: string, fresh: boolean, args: RollAr
     say('New class', label(id), CLASSES[id]);
     track('class_seen', { class: id, total: seenCount() });
     if (seenCount() === TYPES.length) track('atlas_complete');
-    if (fresh) atlas.misses = 0;
-  } else if (fresh) atlas.misses++;
+  }
   save();
-};
-
-/** Odds tilted toward classes not yet seen, more the longer a run of rolls has found nothing new. */
-export const boost = (): Record<string, number> => {
-  const k = 1 + Math.min(atlas.misses, 30) * 0.5;
-  return Object.fromEntries(TYPES.filter((t) => !atlas.seen[t.id]).map((t) => [t.id, k]));
 };
 
 /** Tune the lens to a class: a new world of that class, whether it has been seen or not. */
@@ -106,7 +97,7 @@ export const tune = (id: string) => {
   dispatchEvent(new CustomEvent('planet:reseed', { detail: { kind: id } }));
 };
 
-/** Bring back the world a class was first seen in. Revisiting changes nothing about the odds. */
+/** Bring back the world a class was first seen in. */
 export const revisit = (id: string) => {
   const args = atlas.args[id];
   if (!args || atlas.current.seed === atlas.seen[id]) return false;

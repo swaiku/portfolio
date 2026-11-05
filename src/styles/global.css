@@ -28,8 +28,15 @@
   color-scheme: dark;
 }
 
+/* registered so it can be animated: a new world's colour is tuned in, not switched */
+@property --color-amber {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ff7a3d;
+}
+
 html {
-  transition: --color-amber 0.8s;
+  transition: --color-amber 1.8s ease-in-out;
   scroll-behavior: smooth;
   background: var(--color-deep);
   scrollbar-color: #2b3262 transparent;

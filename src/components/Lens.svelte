@@ -14,8 +14,21 @@
   const code = (i: number) => `CL-${String(i + 1).padStart(2, '0')}`;
   const at = $derived(TYPES.findIndex((t) => t.id === sim.typeId));
   const ready = $derived(sim.state === 'LOCKED' || sim.state === 'SURVEY');
+  // while a world is being made the lens shows static instead of the bake; it clears as the new world fades in
+  const tuning = $derived(sim.state !== 'NO-GL' && sim.phase !== 'fadein' && sim.phase !== 'live');
+  const pct = $derived(Math.round(sim.progress * 100));
   const step = (d: number) => tune(TYPES[(Math.max(at, 0) + d + TYPES.length) % TYPES.length].id);
 </script>
+
+<div class="static" class:on={tuning} aria-hidden="true">
+  <div class="noise"></div>
+  <div class="sweep"></div>
+  <p class="readout">
+    <span class="k">Tuning in</span>
+    <span class="k hi target">{at >= 0 ? `${code(at)} · ${TYPES[at].label}` : 'Searching the sky'}</span>
+    <span class="bar"><i style="transform: scaleX({pct / 100})"></i></span>
+  </p>
+</div>
 
 <div class="hud">
   <p class="corner tl">
@@ -57,11 +70,37 @@
       {sim.cool > 0 ? `Recalibrating ${sim.cool}s` : 'Roll a new world ↻'}
     </button>
   {:else if sim.state !== 'NO-GL'}
-    <span class="k corner br" aria-live="polite">Surveying <span class="num">{Math.round(sim.progress * 100)}%</span></span>
+    <span class="k corner br" aria-live="polite">Signal <span class="num">{pct}%</span></span>
   {/if}
 </div>
 
 <style>
+  /* the tuning screen: dark static, a band sweeping down in the colour the world is tuning to, and the signal filling */
+  .static {
+    position: absolute; inset: 0; overflow: hidden; display: grid; place-items: center;
+    background: #04050b; opacity: 0; pointer-events: none; transition: opacity 1.1s ease;
+  }
+  .static.on { opacity: 1; transition-duration: 0.35s; }
+  .noise {
+    position: absolute; inset: -40px; opacity: 0.16;
+    background:
+      repeating-linear-gradient(0deg, rgb(255 255 255 / 0.05) 0 1px, transparent 1px 3px),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: flicker 0.5s steps(5) infinite;
+  }
+  .sweep {
+    position: absolute; left: 0; right: 0; top: 0; height: 30%;
+    background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--color-amber) 22%, transparent) 85%, var(--color-amber) 100%);
+    opacity: 0.55; animation: sweep 1.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  }
+  .readout { position: relative; margin: 0; display: grid; justify-items: center; gap: 10px; text-align: center; }
+  .target { font-size: 0.8rem; }
+  .bar { display: block; width: 220px; height: 2px; background: rgb(236 239 251 / 0.15); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--color-amber); transform-origin: left; transition: transform 0.4s ease; }
+  @keyframes flicker { to { background-position: 0 7px, 63px -41px; } }
+  @keyframes sweep { from { transform: translateY(-100%); } to { transform: translateY(340%); } }
+  @media (prefers-reduced-motion: reduce) { .noise, .sweep { animation: none; } .sweep { display: none; } }
+
   .hud { position: absolute; inset: 0; }
   .corner { position: absolute; margin: 0; display: flex; flex-direction: column; gap: 5px; }
   .tl { left: 50px; top: 24px; }

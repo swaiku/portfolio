@@ -47,7 +47,7 @@
         <li class="cell" data-rarity={t.rarity} class:seen class:here={atlas.current.id === t.id} class:fresh={atlas.fresh === t.id} style="--d: {i}">
           <p class="top"><span class="k">{code(i)}</span><span class="k rarity">{t.rarity}</span></p>
           <div class="pic">
-            {#if thumb}<img src={thumb} alt="" width="160" height="160" />{:else}<span class="mark" aria-hidden="true"></span>{/if}
+            {#if thumb}<img src={thumb} alt="" width="144" height="144" />{:else}<span class="mark" aria-hidden="true"></span>{/if}
           </div>
           <h3>{seen ? t.label : 'Unsurveyed class'}</h3>
           {#if seen}<p class="note">{CLASSES[t.id]}</p>{/if}
@@ -61,7 +61,6 @@
       {/each}
     </ol>
 
-    <p class="k foot">Rolls since a new class: <b>{atlas.misses}</b>. The longer it runs, the likelier a roll finds one.</p>
   </div>
 </dialog>
 
@@ -84,7 +83,7 @@
   }
   .atlas::backdrop { background: rgb(4 5 11 / 0.6); }
   /* the same ruled sheet as the page: cells joined by hairlines, nothing floating */
-  .board { min-height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
+  .board { min-height: 100%; display: grid; grid-template-rows: auto 1fr; }
   .head {
     display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 6px 28px;
     padding: 22px 26px; outline: 1px solid rgb(236 239 251 / 0.13); outline-offset: -0.5px;
@@ -111,8 +110,9 @@
   .cell.here { outline: 1px solid var(--color-amber); z-index: 1; }
   .top { margin: 0; display: flex; justify-content: space-between; }
   .rarity { color: var(--r); }
-  .pic { display: grid; place-items: center; height: clamp(88px, 13vh, 132px); }
-  .pic img { height: 100%; width: auto; aspect-ratio: 1; border-radius: 50%; }
+  .pic { display: grid; place-items: center; height: clamp(96px, 14vh, 144px); }
+  /* the picture keeps its glow and fades into the cell instead of being cut to a disc */
+  .pic img { height: 100%; width: auto; aspect-ratio: 1; mask-image: radial-gradient(circle, #000 52%, transparent 70%); }
   /* no picture yet: a dotted ring for a class never met, a solid one in its rarity colour once met */
   .mark { width: clamp(56px, 8vh, 84px); aspect-ratio: 1; border-radius: 50%; border: 1px dashed rgb(236 239 251 / 0.3); }
   .seen .mark { border: 1px solid var(--r); background: radial-gradient(circle at 32% 30%, color-mix(in srgb, var(--r) 45%, transparent), transparent 70%); }
@@ -120,8 +120,6 @@
   .cell:not(.seen) h3 { color: var(--color-dim); }
   .note { margin: 0; font-size: 0.82rem; line-height: 1.45; color: #a9aec6; }
   .acts { margin: auto 0 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; }
-  .foot { padding: 16px 26px; outline: 1px solid rgb(236 239 251 / 0.13); outline-offset: -0.5px; }
-  .foot b { color: var(--color-amber); font-weight: 500; }
 
   /* opening: the cells come up in reading order; a class just met lands with a flash of its rarity colour */
   .atlas[open] .cell { animation: rise 0.6s var(--ease-out-expo) backwards; animation-delay: calc(var(--d) * 35ms); }

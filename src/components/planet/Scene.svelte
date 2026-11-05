@@ -8,7 +8,7 @@
   import { sim } from '../../lib/planet/sim.svelte';
   import { BAKE, quality } from '../../lib/planet/quality.svelte';
   import { describe } from '../../lib/planet/facts';
-  import { atlas, boost, COOLDOWN, keepThumb, markLocked, noteWorld, wantsThumb } from '../../lib/atlas.svelte';
+  import { atlas, COOLDOWN, keepThumb, markLocked, noteWorld, wantsThumb } from '../../lib/atlas.svelte';
   import { stage } from '../../lib/interactions';
   import { createSkyMaterial } from '../../lib/planet/tsl/sky';
   import { createAtmosphereMaterial } from '../../lib/planet/tsl/atmosphere';
@@ -72,7 +72,7 @@
       look = l;
       announce(w, a);
     },
-    { texture: BAKE[quality.tier], reduced, restore: atlas.last, boost: boost() },
+    { texture: BAKE[quality.tier], reduced, restore: atlas.last },
   );
 
   const materials = {
@@ -182,23 +182,24 @@
   // the atlas keeps a small picture of the first world of each class: one extra frame, drawn and copied in the same
   // task so the canvas still holds it, cropped around the body
   let snapped = false;
-  const THUMB = 160;
+  const THUMB = 288; // twice the largest size the atlas shows it at, for sharp screens
   const snap = () => {
     try {
       renderer.render(scene, camera.current);
       const c = renderer.domElement;
       const k = c.width / c.clientWidth;
-      const r = stage.r * 1.3;
+      const r = stage.r * 1.5; // room for the atmosphere and a ring
       const out = document.createElement('canvas');
       out.width = out.height = THUMB;
       const ctx = out.getContext('2d', { willReadFrequently: true })!;
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(c, (stage.x - r) * k, (stage.y - r) * k, 2 * r * k, 2 * r * k, 0, 0, THUMB, THUMB);
       // an all-black read means the frame was already gone: keep no picture rather than a black square
       const px = ctx.getImageData(0, 0, THUMB, THUMB).data;
       let lit = 0;
       for (let i = 0; i < px.length; i += 16) lit += px[i] + px[i + 1] + px[i + 2];
       if (lit < 4000) return;
-      keepThumb(atlas.current.id, out.toDataURL('image/webp', 0.75));
+      keepThumb(atlas.current.id, out.toDataURL('image/webp', 0.9));
     } catch { /* no picture: the atlas shows the class's mark instead */ }
   };
   const side = (x: number) => MathUtils.smoothstep(Math.abs(x), 0.15, 0.45);
@@ -312,11 +313,11 @@
   });
 
   const reseed = (e: Event) => {
-    // the atlas may ask for a class by name (a probe); otherwise the odds lean toward classes not seen yet
+    // the dial or the atlas may ask for a class by name, or bring back a world already seen
     const { kind, replay } = (e as CustomEvent<{ kind?: string; replay?: RollArgs }>).detail ?? {};
     if (baker.phase === 'live' && sim.cool > 0 && !kind && !replay) return;
     replaying = !!replay;
-    baker.reseed(kind, kind ? undefined : boost(), replay);
+    baker.reseed(kind, undefined, replay);
   };
   // the debug panel changed a baked uniform: bake the current world again, without rolling a new one
   const rebake = () => baker.rebake();
