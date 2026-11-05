@@ -112,8 +112,12 @@
   .rarity { color: var(--r); }
   /* a fixed square: the picture never grows past it into the text below */
   .pic { --s: clamp(96px, 14vh, 144px); display: grid; place-items: center; height: var(--s); }
-  /* the picture is the body on black: lighten drops the black so it sits straight on the cell, uncropped */
-  .pic img { width: var(--s); height: var(--s); object-fit: contain; mix-blend-mode: lighten; }
+  /* the picture is the body on black: lighten drops the black so it sits straight on the cell. A star's corona or a
+     glow can fill the crop, so its last stretch fades out instead of ending on a square edge */
+  .pic img {
+    width: var(--s); height: var(--s); object-fit: contain; mix-blend-mode: lighten;
+    mask-image: radial-gradient(closest-side, #000 60%, transparent 100%);
+  }
   /* no picture yet: a dotted ring for a class never met, a solid one in its rarity colour once met */
   .mark { width: clamp(56px, 8vh, 84px); aspect-ratio: 1; border-radius: 50%; border: 1px dashed rgb(236 239 251 / 0.3); }
   .seen .mark { border: 1px solid var(--r); background: radial-gradient(circle at 32% 30%, color-mix(in srgb, var(--r) 45%, transparent), transparent 70%); }
