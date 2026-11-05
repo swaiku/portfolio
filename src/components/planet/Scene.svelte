@@ -221,30 +221,20 @@
     } catch { /* no copy: the lens cuts straight to static */ }
   };
 
-  // arriving: the new world comes down like a probe's picture, in coarse blocks that sharpen. The real scene is drawn
-  // at a fraction of its resolution and scaled up without smoothing, which also makes those frames cheaper
-  const DOWNLINK = [0.04, 0.08, 0.16, 0.32, 0.6, 1];
-  const BLOCK = 0.26; // seconds per step
-  let downlink = { at: -1, base: 1, step: -1 };
-  const stepDownlink = () => {
-    if (baker.phase === 'fadein' && downlink.at < 0 && !reduced) {
-      downlink = { at: performance.now(), base: quality.dpr, step: -1 };
-      document.documentElement.classList.add('downlink');
-    }
-    if (downlink.at < 0) return;
-    const i = Math.floor((performance.now() - downlink.at) / 1000 / BLOCK);
-    if (i === downlink.step) return;
-    downlink.step = i;
-    if (i < DOWNLINK.length) {
-      quality.dpr = Math.max(0.03, downlink.base * DOWNLINK[i]);
-      sim.downlink = (i + 1) / DOWNLINK.length;
-      return;
-    }
-    quality.dpr = downlink.base;
-    sim.downlink = 0;
-    downlink.at = -1;
-    settleAt = performance.now() + 3000; // the governor must not judge the frame rate on these frames
-    document.documentElement.classList.remove('downlink');
+  // arriving: the lens pulls focus on the new world, hunting once past it before it settles (global.css, .focus).
+  // Once per world: the fade-in can outlast the pull
+  let focused = false;
+  let focusTimer = 0;
+  const stepFocus = () => {
+    if (baker.phase !== 'fadein' && baker.phase !== 'live') focused = false;
+    if (baker.phase !== 'fadein' || focused || reduced) return;
+    focused = true;
+    const root = document.documentElement;
+    root.classList.remove('focus');
+    void root.offsetWidth; // restart the animation
+    root.classList.add('focus');
+    clearTimeout(focusTimer);
+    focusTimer = window.setTimeout(() => root.classList.remove('focus'), 1800);
   };
   const side = (x: number) => MathUtils.smoothstep(Math.abs(x), 0.15, 0.45);
 
@@ -342,7 +332,7 @@
       markLocked();
     }
     if (baker.phase !== 'live') lockedAt = 0;
-    stepDownlink();
+    stepFocus();
     if (!lockedAt) snapped = false;
     else if (!snapped && performance.now() - lockedAt > 1200 && wantsThumb()) {
       snapped = true;

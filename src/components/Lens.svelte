@@ -82,7 +82,6 @@
 </div>
 
 <canvas bind:this={tear} class="tear" class:on={tearing} aria-hidden="true"></canvas>
-{#if sim.downlink > 0}<span class="scan" style="top: {sim.downlink * 100}%" aria-hidden="true"></span>{/if}
 
 <div class="hud">
   <p class="corner tl">
@@ -151,12 +150,6 @@
 
   .tear { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; opacity: 0; pointer-events: none; }
   .tear.on { opacity: 1; }
-  /* the downlink's receiving line: it steps down the lens with each sharper block of the picture */
-  .scan {
-    position: absolute; left: 0; right: 0; height: 1px; pointer-events: none;
-    background: var(--color-amber); box-shadow: 0 0 12px 1px var(--color-amber);
-    transition: top 0.26s steps(4);
-  }
 
   .hud { position: absolute; inset: 0; }
   .corner { position: absolute; margin: 0; display: flex; flex-direction: column; gap: 5px; }
