@@ -239,28 +239,7 @@
   };
   const side = (x: number) => MathUtils.smoothstep(Math.abs(x), 0.15, 0.45);
 
-  // nothing is drawn or baked until the shaders are compiled; the lens shows its tuning screen meanwhile (Lens.svelte)
-  let compiled = false;
-  const precompile = async () => {
-    await baker.compile();
-    // the world's surface and clouds stay hidden until baked: show them for the compile only, so their first frame is ready too
-    const shown: Mesh[] = [];
-    group?.traverse((o) => {
-      const m = o as Mesh;
-      if (look.kind === 'planet' && !m.visible && (m.material === materials.planet || m.material === materials.clouds)) {
-        m.visible = true;
-        shown.push(m);
-      }
-    });
-    try {
-      await renderer.compileAsync(scene, camera.current);
-    } finally {
-      shown.forEach((m) => (m.visible = false));
-    }
-  };
-
   useTask((dt) => {
-    if (!compiled) return;
     dt = Math.min(dt, 0.1);
     govern(dt);
     baker.step(dt);
@@ -397,8 +376,6 @@
     addEventListener('planet:reseed', reseed);
     addEventListener('planet:rebake', rebake);
     stages.refresh();
-    // a failed precompile only costs the old stalls: draw anyway
-    precompile().catch(() => {}).finally(() => (compiled = true));
     return () => {
       removeEventListener('pointermove', onMove);
       removeEventListener('scroll', poke);
