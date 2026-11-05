@@ -30,6 +30,12 @@
             sim.state = "NO-GL";
             return;
         }
+        // three.js and the first shaders hold the main thread for a while: let the page load and settle first
+        // (the lens shows its tuning screen meanwhile). Safari has no requestIdleCallback, hence the timer
+        if (document.readyState !== "complete") await new Promise((r) => addEventListener("load", r, { once: true }));
+        await new Promise((r) =>
+            "requestIdleCallback" in window ? requestIdleCallback(r, { timeout: 2000 }) : setTimeout(r, 300),
+        );
         backend = gpu ? "gpu" : "gl";
         debug = params.has("debug");
     });
