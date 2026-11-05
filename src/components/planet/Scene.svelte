@@ -183,6 +183,11 @@
   // task so the canvas still holds it, cropped around the body
   let snapped = false;
   const THUMB = 288; // twice the largest size the atlas shows it at, for sharp screens
+  // a visitor scrolled past the lens (a phone) would leave the body off the canvas, and the picture cut or black
+  const lensInView = () => {
+    const b = document.querySelector('[data-lens]')?.getBoundingClientRect();
+    return !b || (b.top >= 0 && b.bottom <= innerHeight);
+  };
   const snap = () => {
     try {
       // the body alone on black: the sky is left out of this one frame
@@ -203,7 +208,9 @@
       let lit = 0;
       for (let i = 0; i < px.length; i += 16) lit += px[i] + px[i + 1] + px[i + 2];
       if (lit < 4000) return;
-      keepThumb(atlas.current.id, out.toDataURL('image/webp', 0.9));
+      // Safari cannot encode WebP and returns a much larger PNG: JPEG there (the body is on black, so nothing is lost)
+      const webp = out.toDataURL('image/webp', 0.9);
+      keepThumb(atlas.current.id, webp.startsWith('data:image/webp') ? webp : out.toDataURL('image/jpeg', 0.85));
     } catch { /* no picture: the atlas shows the class's mark instead */ }
     if (dome) dome.visible = true;
   };
@@ -332,11 +339,16 @@
     if (baker.phase === 'live' && !lockedAt) {
       lockedAt = performance.now();
       markLocked();
+      if (queued) {
+        const e = queued;
+        queued = null;
+        reseed(e);
+      }
     }
     if (baker.phase !== 'live') lockedAt = 0;
     stepFocus();
     if (!lockedAt) snapped = false;
-    else if (!snapped && performance.now() - lockedAt > 1200 && wantsThumb()) {
+    else if (!snapped && performance.now() - lockedAt > 1200 && wantsThumb() && lensInView()) {
       snapped = true;
       snap();
     }
@@ -352,7 +364,9 @@
   const reseed = (e: Event) => {
     // the dial or the atlas may ask for a class by name, or bring back a world already seen
     const { kind, replay } = (e as CustomEvent<{ kind?: string; replay?: RollArgs }>).detail ?? {};
-    if (baker.phase === 'live' && sim.cool > 0 && !kind && !replay) return;
+    // a world still being made cannot be replaced: keep the latest request and run it once this one is live
+    if (baker.phase !== 'live') { queued = e; return; }
+    if (sim.cool > 0 && !kind && !replay) return;
     const go = () => {
       pending = 0;
       replaying = !!replay;
@@ -366,6 +380,7 @@
     } else go();
   };
   let pending = 0;
+  let queued: Event | null = null;
   // the debug panel changed a baked uniform: bake the current world again, without rolling a new one
   const rebake = () => baker.rebake();
   onMount(() => {

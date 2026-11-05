@@ -35,12 +35,24 @@ interface Save {
 export const COOLDOWN = 8;
 const KEY = 'swaiku:atlas:v1';
 const EMPTY = (): Save => ({ seen: {}, thumbs: {}, args: {} });
+// each picture has a key of its own: when storage is full, a picture fails to save, never the collection
+const thumbKey = (id: string) => `${KEY}:thumb:${id}`;
+const storeThumb = (id: string, url: string) => {
+  try { localStorage.setItem(thumbKey(id), url); } catch { /* storage full: the atlas shows the class's mark */ }
+};
 const load = (): Save => {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null');
     if (raw && typeof raw === 'object') {
       if (raw.lockedAt && Date.now() - raw.lockedAt > COOLDOWN * 1000) delete raw.last;
-      return { ...EMPTY(), ...raw };
+      // an older save kept the pictures inline: move them out to their own keys
+      Object.entries((raw.thumbs ?? {}) as Record<string, string>).forEach(([id, url]) => storeThumb(id, url));
+      const thumbs: Record<string, string> = {};
+      for (const { id } of TYPES) {
+        const url = localStorage.getItem(thumbKey(id));
+        if (url) thumbs[id] = url;
+      }
+      return { ...EMPTY(), ...raw, thumbs };
     }
   } catch { /* private mode or corrupt save: start fresh */ }
   return EMPTY();
@@ -54,8 +66,8 @@ export const atlas = $state({
 });
 
 const save = () => {
-  const { seen, thumbs, last, args, opened, lockedAt } = atlas;
-  try { localStorage.setItem(KEY, JSON.stringify({ seen, thumbs, last, args, opened, lockedAt })); } catch { /* storage unavailable */ }
+  const { seen, last, args, opened, lockedAt } = atlas;
+  try { localStorage.setItem(KEY, JSON.stringify({ seen, last, args, opened, lockedAt })); } catch { /* storage unavailable */ }
 };
 
 let toastTimer = 0;
@@ -79,10 +91,8 @@ export const seenCount = () => Object.keys(atlas.seen).length;
 const label = (id: string) => TYPES.find((t) => t.id === id)?.label ?? id;
 
 /** The world on screen changed: note it, and remember how to bring it back after a reload. */
-let viaTune = false;
 export const noteWorld = (id: string, seed: string, fresh: boolean, args: RollArgs, info: Record<string, string | number | boolean> = {}) => {
-  if (fresh) track(viaTune ? 'world_tuned' : 'world_rolled', { class: id, ...info, seed, new: !atlas.seen[id] });
-  viaTune = false;
+  if (fresh) track(args.kind ? 'world_tuned' : 'world_rolled', { class: id, ...info, seed, new: !atlas.seen[id] });
   atlas.current = { id, seed };
   atlas.last = args;
   atlas.lockedAt = 0;
@@ -99,7 +109,6 @@ export const noteWorld = (id: string, seed: string, fresh: boolean, args: RollAr
 
 /** Tune the lens to a class: a new world of that class, whether it has been seen or not. */
 export const tune = (id: string) => {
-  viaTune = true;
   track('class_tuned', { class: id });
   dispatchEvent(new CustomEvent('planet:reseed', { detail: { kind: id } }));
 };
@@ -128,7 +137,7 @@ export const wantsThumb = () => {
 };
 export const keepThumb = (id: string, url: string) => {
   atlas.thumbs[id] = url;
-  save();
+  storeThumb(id, url);
 };
 
 /** The world finished baking: the cooldown starts now. */
