@@ -171,7 +171,8 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
 .missions p { grid-column: 2; margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--color-ink-3); }
 .also { margin: auto 0 0; padding-top: 10px; font-size: 0.85rem; line-height: 1.5; color: var(--color-ink-3); }
 .also .k { margin-right: 10px; }
-.also a { text-decoration: none; color: var(--color-ink); }
+/* underlined, not only lighter: a link in a line of text must not rely on colour alone */
+.also a { color: var(--color-ink); text-decoration: underline; text-decoration-color: rgb(236 239 251 / 0.35); text-underline-offset: 3px; }
 .also a:hover { color: var(--color-amber); }
 
 .t-log p { margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--color-ink-2); }

@@ -90,7 +90,8 @@
 </script>
 
 <div class="static" class:on={tuning || held} aria-hidden="true">
-  <div class="noise"></div>
+  <!-- inline, not a CSS url(): a background image would count as the page's largest paint, and this is decoration -->
+  <svg class="noise"><filter id="lens-grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch" /></filter><rect width="100%" height="100%" filter="url(#lens-grain)" /></svg>
   <p class="readout">
     <span class="k">Tuning in</span>
     <span class="k hi target">{target}</span>
@@ -154,16 +155,16 @@
   .static.on { opacity: 1; transition-duration: 0.35s; }
   .noise {
     position: absolute; inset: -40px; opacity: 0.16;
-    background:
-      repeating-linear-gradient(0deg, rgb(255 255 255 / 0.05) 0 1px, transparent 1px 3px),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    width: calc(100% + 80px); height: calc(100% + 80px);
+    background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.05) 0 1px, transparent 1px 3px);
+    /* the grain jumps on the compositor: a transform, not a background-position */
     animation: flicker 0.5s steps(5) infinite;
   }
   .readout { position: relative; margin: 0; display: grid; justify-items: center; gap: 10px; text-align: center; }
   .target { font-size: 0.8rem; }
   .bar { display: block; width: 220px; height: 2px; background: rgb(236 239 251 / 0.15); overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--color-amber); transform-origin: left; transition: transform 0.4s ease; }
-  @keyframes flicker { to { background-position: 0 7px, 63px -41px; } }
+  @keyframes flicker { to { transform: translate(31px, -29px); } }
   @media (prefers-reduced-motion: reduce) { .noise { animation: none; } }
 
   .tear { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; opacity: 0; pointer-events: none; transition: opacity 0.4s; }
@@ -209,6 +210,7 @@
     .tr { display: none; }
     .bl { left: 20px; bottom: 96px; }
     .br { right: 20px; bottom: 96px; }
-    .scale { --tick: 21px; --step: 28px; }
+    /* 24px a tick: the smallest target a finger can hit (WCAG 2.5.8), and the dial still fits a 360px phone */
+    .scale { --tick: 24px; --step: 24px; }
   }
 </style>
