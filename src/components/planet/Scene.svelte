@@ -234,7 +234,7 @@
     void root.offsetWidth; // restart the animation
     root.classList.add('focus');
     clearTimeout(focusTimer);
-    focusTimer = window.setTimeout(() => root.classList.remove('focus'), 1800);
+    focusTimer = window.setTimeout(() => root.classList.remove('focus'), 3400);
   };
   const side = (x: number) => MathUtils.smoothstep(Math.abs(x), 0.15, 0.45);
 

@@ -285,12 +285,13 @@ html[data-js] .reveal.in { opacity: 1; transform: none; }
 }
 
 /* a new world: the lens pulls focus, goes a touch past it, then settles; the viewfinder closes in while it does */
-html.focus .planet-host canvas { animation: focus 1.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
-html.focus .lens::before, html.focus .lens::after { animation: frame 1.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
+html.focus .planet-host canvas { animation: focus 3.2s cubic-bezier(0.2, 0.7, 0.2, 1); }
+html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-bezier(0.2, 0.7, 0.2, 1); }
 @keyframes focus {
-  0% { filter: blur(22px) brightness(1.35); transform: scale(1.04); }
-  55% { filter: blur(0); transform: scale(1); }
-  70% { filter: blur(3px); }
+  0% { filter: blur(26px) brightness(1.35); transform: scale(1.05); }
+  15% { filter: blur(26px) brightness(1.3); transform: scale(1.05); }
+  60% { filter: blur(0); transform: scale(1); }
+  74% { filter: blur(4px); }
   100% { filter: blur(0); transform: scale(1); }
 }
 @keyframes frame { 0%, 100% { inset: 14px; } 45% { inset: 30px; } }
