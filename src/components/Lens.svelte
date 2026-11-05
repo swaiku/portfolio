@@ -72,6 +72,7 @@
   <p class="top">
     <span class="k hi">Target · {locked ? sim.name : sim.state === 'NO-GL' ? 'stand-in, no GPU' : 'acquiring'}</span>
     {#if locked}<span class="k">{sim.rarity}{odds ? ` · ${odds}% of rolls` : ''}</span>{/if}
+    {#if sim.state !== 'NO-GL'}<span class="k" data-seed>Seed {sim.seed}</span>{/if}
   </p>
   <button type="button" class="k hi corner left" onclick={openAtlas}>Atlas · {loggedCount()}/{TYPES.length} →</button>
   {#if locked}
