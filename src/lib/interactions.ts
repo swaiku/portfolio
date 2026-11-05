@@ -71,24 +71,43 @@ export function startInteractions(tz: string) {
   });
   on('pointercancel', () => { stopHold(); down = null; });
 
-  // sections the visitor actually reads
+  // sections the visitor actually reads: on one screen every tile is in view at once, so a visit is a pause on the
+  // tile (pointer or focus); when the sheet stacks and scrolls, reading it in view counts as before
   const visible = new Set<string>();
   const io = new IntersectionObserver((entries) => entries.forEach((e) => {
     const task = SECTIONS[e.target.id];
-    if (e.isIntersecting) { visible.add(task); fire(task); } else visible.delete(task);
+    if (e.isIntersecting && document.documentElement.scrollHeight > innerHeight * 1.2) { visible.add(task); fire(task); } else visible.delete(task);
   }), { threshold: 0.5 });
-  Object.keys(SECTIONS).forEach((id) => { const el = document.getElementById(id); if (el) io.observe(el); });
+  const dwell = new Map<string, number>();
+  Object.keys(SECTIONS).forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    io.observe(el);
+    const enter = () => dwell.set(id, window.setTimeout(() => { visible.add(SECTIONS[id]); fire(SECTIONS[id]); }, 1200));
+    const leave = () => clearTimeout(dwell.get(id));
+    el.addEventListener('pointerenter', enter);
+    el.addEventListener('focusin', enter);
+    el.addEventListener('pointerleave', leave);
+    el.addEventListener('focusout', leave);
+    off.push(() => { el.removeEventListener('pointerenter', enter); el.removeEventListener('focusin', enter); el.removeEventListener('pointerleave', leave); el.removeEventListener('focusout', leave); leave(); });
+  });
   off.push(() => io.disconnect());
   // a world that locks while its section is already on screen still counts
   const recheck = setInterval(() => { if (live()) { visible.forEach(fire); collect(); } }, 2000);
   off.push(() => clearInterval(recheck));
 
-  // a round trip down the page and back
+  // a round trip down the page and back: by scrolling, or on one screen by taking the pointer to the bottom edge and back up
   let leg = 0;
+  const trip = (top: boolean, bottom: boolean) => {
+    if (top) { if (leg === 2) fire('day-cycle'); leg = 1; }
+    else if (leg === 1 && bottom) leg = 2;
+  };
   on('scroll', () => {
     const max = document.documentElement.scrollHeight - innerHeight;
-    if (scrollY < 50) { if (leg === 2) fire('day-cycle'); leg = 1; }
-    else if (leg === 1 && scrollY > max - 80) leg = 2;
+    if (max > 80) trip(scrollY < 50, scrollY > max - 80);
+  }, { passive: true });
+  on('pointermove', (e) => {
+    if (e.pointerType === 'mouse' && document.documentElement.scrollHeight - innerHeight <= 80) trip(e.clientY < innerHeight * 0.08, e.clientY > innerHeight * 0.92);
   }, { passive: true });
 
   // nobody touching anything

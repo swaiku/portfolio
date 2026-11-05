@@ -1,127 +1,121 @@
 ---
 import Base from '../layouts/Base.astro';
 import Clock from '../components/Clock.svelte';
-import FootBar from '../components/FootBar.svelte';
-import Survey from '../components/Survey.svelte';
+import Lens from '../components/Lens.svelte';
 import Atlas from '../components/Atlas.svelte';
 import AtlasLink from '../components/AtlasLink.svelte';
-import { site, flightPlan, payload, missions, offDuty } from '../data/site';
+import { site, flightPlan, missions, instruments, alsoAboard, offDuty } from '../data/site';
+
+const featured = missions.filter((m) => m.line);
+const others = missions.filter((m) => !m.line);
+// Eurobot already flies under Missions; the plan keeps the four latest steps
+const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
 ---
 
 <Base
   title="Jérémy · Data science and robotics"
   description="Personal site of Jérémy (Swaiku): Master's student in Data Science at HES-SO in Lausanne, working on MLOps, UAV navigation and self-hosted infrastructure."
 >
-  <header class="topbar">
-    <a class="status" href="#transmission"><span class="dot" aria-hidden="true"></span>{site.status}</a>
-    <AtlasLink client:only="svelte" />
-    <nav class="nav" aria-label="Sections">
-      <a href="#briefing">Briefing</a>
-      <a href="#payload">Payload</a>
-      <a href="#missions">Missions</a>
-      <a href="#off-duty">Off duty</a>
-      <a class="keep" href="#transmission">Contact</a>
+  <header class="bar">
+    <a class="k hi status" href="#uplink"><span class="dot" aria-hidden="true"></span>{site.status}</a>
+    <p class="k station">Ground station · {site.base.split(',')[0]} · {site.coords} · <Clock client:idle tz={site.timezone} /></p>
+    <nav class="k links" aria-label="Elsewhere">
+      <AtlasLink client:only="svelte" />
+      <a href={site.github} rel="noopener">GitHub ↗</a>
+      {site.linkedin && <a href={site.linkedin} rel="noopener">LinkedIn ↗</a>}
     </nav>
   </header>
 
-  <main id="top">
-    <section class="stage side-l" data-stage="0.6,-0.04,0.9" data-stage-m="0,0.42,0.9">
-      <div class="stage-inner" style="width:min(100%,31rem)">
-        <h1 class="h-display reveal">{site.handle}</h1>
-        <p class="lede reveal" style="--i:1; margin-top:1.1rem">
-          {site.tagline}
-        </p>
-        <div class="reveal" style="--i:2; display:flex; flex-wrap:wrap; align-items:center; gap:14px 26px; margin-top:1.8rem">
-          <a class="btn" href="#briefing">Read the briefing</a>
-          <a class="link" href={site.github} rel="noopener">GitHub ↗</a>
-        </div>
-        <div class="facts reveal" style="--i:3">
-          <p class="tag">{site.base} <Clock client:idle tz={site.timezone} /> CET</p>
-        </div>
-        <Survey client:only="svelte" />
+  <main id="top" class="sheet">
+    <section class="tile t-id" aria-labelledby="who">
+      <span class="k no" aria-hidden="true">01</span>
+      <div class="name">
+        <h1 id="who">{site.handle}</h1>
+        <span class="k">aka Swaiku</span>
+      </div>
+      <div>
+        <p class="lead">Machine learning, autonomous robots, and the infrastructure that keeps them flying.</p>
+        <p class="sub">Master's student in Data Science · HES-SO Lausanne</p>
       </div>
     </section>
 
-    <section id="briefing" class="stage side-r" data-stage="-0.5,0.02,0.8" data-stage-m="0,0.5,0.7">
-      <div class="stage-inner">
-        <h2 class="h-section reveal">Mission briefing</h2>
-        <div class="prose">
-          <p class="reveal" style="--i:1">
-            I'm Jérémy, known as Swaiku. I studied Data Engineering at HEIA-FR and I'm now a Master's student in
-            Data Science at HES-SO in Lausanne, with a focus on MLOps and cloud systems. I work in French,
-            English (B2) and German (A2).
-          </p>
-          <p class="reveal" style="--i:2">
-            Robots keep pulling me back in. I'm an alumnus of the Eurobot robotics competition. I
-            wrote my Bachelor thesis on UAV navigation without GPS, and I run my own services on a Raspberry Pi 5 homelab.
-          </p>
-        </div>
-        <ol class="list tight reveal" style="--i:3; margin-top:1.8rem">
-          {flightPlan.map((s) => (
-            <li class="item-line">
-              <span class="item-title" style="margin:0">{s.title}</span>
-              <span class="meta"><span class:list={['when', { now: s.phase === 'now' }]}>{s.phase}</span> · {s.where}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
+    <section id="missions" class="tile t-missions" aria-labelledby="missions-h">
+      <span class="k no" aria-hidden="true">02</span>
+      <h2 id="missions-h" class="k hi">Missions</h2>
+      <ol class="missions">
+        {featured.map((m) => (
+          <li>
+            <span class="k">{m.year}</span>
+            <b>{m.href ? <a href={m.href} rel="noopener">{m.name.replace(/^Bachelor thesis: /, '')} ↗</a> : m.name.replace(/^Bachelor thesis: /, '')}</b>
+            <p>{m.line}</p>
+          </li>
+        ))}
+      </ol>
+      <p class="also">
+        <span class="k">Also</span>
+        {others.map((m, i) => (<>{i > 0 && ', '}{m.href ? <a href={m.href} rel="noopener">{m.name} ↗</a> : m.name}</>))}
+      </p>
     </section>
 
-    <section id="payload" class="stage side-l" data-stage="0.74,-0.1,1.1" data-stage-m="0,0.5,0.7">
-      <div class="stage-inner">
-        <h2 class="h-section reveal">Payload modules</h2>
-        <p class="lede reveal" style="--i:1; margin-bottom:1.8rem">What I fly with, grouped the way I reach for it.</p>
-        <div class="list reveal" style="--i:2">
-          {payload.map((m) => (
-            <div>
-              <h3 class="item-title">{m.module}</h3>
-              <ul class="inline">{m.items.map((i) => <li>{i}</li>)}</ul>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div class="lens" data-lens>
+      <Lens client:only="svelte" />
+    </div>
+
+    <section class="tile t-log" aria-labelledby="log-h">
+      <h2 id="log-h" class="k">Flight log</h2>
+      <p>First entry in preparation: how the planet on this page is generated.</p>
     </section>
 
-    <section id="missions" class="stage side-r" data-stage="-0.78,0.1,1.15" data-stage-m="0,0.5,0.7">
-      <div class="stage-inner wide">
-        <h2 class="h-section reveal">Active and past missions</h2>
-        <div class="list reveal" style="--i:1; margin-top:1.6rem">
-          {missions.map((m) => (
-            <article class="mission">
-              <div class="item-line">
-                <h3 class="item-title">{m.href ? <a href={m.href} rel="noopener">{m.name} ↗</a> : m.name}</h3>
-                <span class="meta">{m.where}</span>
-              </div>
-              <p class="item-text">{m.brief}</p>
-              <ul class="inline">{m.tags.map((t) => <li>{t}</li>)}</ul>
-            </article>
-          ))}
-        </div>
-      </div>
+    <section id="payload" class="tile t-payload" aria-labelledby="payload-h">
+      <span class="k no" aria-hidden="true">03</span>
+      <h2 id="payload-h" class="k hi">Payload <span class="k">· flown on</span></h2>
+      <dl class="instruments">
+        {instruments.map((i) => (<><dt>{i.tools}</dt><dd class="k">{i.flew}</dd></>))}
+      </dl>
+      <p class="also"><span class="k">Also aboard</span> {alsoAboard.join(', ')}</p>
     </section>
 
-    <section id="off-duty" class="stage side-l" data-stage="0.6,0.22,0.85" data-stage-m="0,0.5,0.7">
-      <div class="stage-inner">
-        <h2 class="h-section reveal">Off duty</h2>
-        <dl class="pairs reveal" style="--i:1; margin-top:1.6rem">
-          {offDuty.map((o) => (<><dt>{o.k}</dt><dd>{o.v}</dd></>))}
-        </dl>
-      </div>
+    <section class="tile t-plan" aria-labelledby="plan-h">
+      <span class="k no" aria-hidden="true">04</span>
+      <h2 id="plan-h" class="k hi">Flight plan</h2>
+      <ol class="plan">
+        {plan.map((s) => (
+          <li class:list={{ now: s.phase === 'now' }}><span class="pin" aria-hidden="true"></span><span>{s.title}</span><span class="k">{s.phase}</span></li>
+        ))}
+      </ol>
     </section>
 
-    <section id="transmission" class="stage center" data-stage="0,-1.45,1.15" data-stage-m="0,-1.3,1">
-      <div class="stage-inner" style="padding-bottom: 6vh">
-        <h2 class="h-section reveal">Transmission log</h2>
-        <p class="lede reveal" style="--i:1; margin-inline:auto">{site.status}. The easiest way to reach me is below.</p>
-        <div class="reveal" style="--i:2; display:flex; flex-wrap:wrap; align-items:center; gap:14px 26px; justify-content:center; margin-top:1.8rem">
-          {site.email && <a class="btn" href={`mailto:${site.email}`}>{site.email}</a>}
-          <a class:list={[site.email ? 'link' : 'btn']} href={site.github} rel="noopener">github.com/swaiku ↗</a>
-          {site.linkedin && <a class="link" href={site.linkedin} rel="noopener">LinkedIn ↗</a>}
-        </div>
-      </div>
+    <section id="off-duty" class="tile t-leave" aria-labelledby="leave-h">
+      <h2 id="leave-h" class="k hi">Shore leave</h2>
+      <p>{offDuty.map((o) => o.k).join(' · ')}</p>
     </section>
+
+    <a id="uplink" class="tile t-uplink" href={site.linkedin || site.github} rel="noopener">
+      <span class="call">Open a channel</span>
+      <span class="k">{site.linkedin ? 'LinkedIn ↗' : 'GitHub ↗'}</span>
+    </a>
   </main>
 
   <Atlas client:only="svelte" tz={site.timezone} />
-  <FootBar client:only="svelte" status={site.status} base={site.base} tz={site.timezone} github={site.github} />
+
+  <script>
+    // the scene poses the world from `data-stage`; aim it at the lens, sized to fit inside it
+    const lens = document.querySelector<HTMLElement>('[data-lens]')!;
+    const aim = () => {
+      const r = lens.getBoundingClientRect();
+      const x = ((r.left + r.width / 2) / innerWidth - 0.5) * 2;
+      const y = -((r.top + r.height / 2) / innerHeight - 0.5) * 2;
+      const s = (0.4 * Math.min(r.width, r.height)) / (0.5 * Math.min(innerWidth, innerHeight));
+      lens.dataset.stage = [x, y, s].map((v) => v.toFixed(3)).join(',');
+      // the same aim for the CSS stand-in shown when there is no GPU
+      const d = 0.8 * Math.min(r.width, r.height);
+      const root = document.documentElement.style;
+      root.setProperty('--lens-l', `${r.left + r.width / 2 - d / 2}px`);
+      root.setProperty('--lens-t', `${r.top + r.height / 2 - d / 2}px`);
+      root.setProperty('--lens-d', `${d}px`);
+      root.setProperty('--lens-r', 'auto');
+    };
+    aim();
+    addEventListener('resize', aim);
+  </script>
 </Base>

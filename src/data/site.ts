@@ -5,6 +5,7 @@ export const site = {
   name: 'Jérémy',
   base: 'Fribourg, CH',
   timezone: 'Europe/Zurich',
+  coords: '46.81° N 7.16° E',
   tagline:
     'Data science student. I build machine-learning systems, autonomous robots and the infrastructure that keeps them running.',
   github: 'https://github.com/swaiku',
@@ -31,9 +32,12 @@ export const payload = [
   { module: 'Web', items: ['Astro', 'Svelte', 'Tailwind', 'Bun', 'Godot', 'Obsidian'] },
 ];
 
-export const missions: { name: string; where: string; brief: string; tags: string[]; href?: string }[] = [
+// `line` marks a mission as featured on the home sheet, in one sentence
+export const missions: { name: string; where: string; brief: string; tags: string[]; href?: string; year?: string; line?: string }[] = [
   {
     name: 'Bachelor thesis: GPS-denied UAV navigation',
+    year: '2026',
+    line: 'Keeps a drone over landmark-rich ground so it can localise without GPS.',
     where: 'HES-SO, 2026',
     brief:
       'Feature-aware trajectory planning that keeps a drone over landmark-rich ground, so visual localisation stays reliable without GPS.',
@@ -41,6 +45,8 @@ export const missions: { name: string; where: string; brief: string; tags: strin
   },
   {
     name: 'Eurobot',
+    year: '2025',
+    line: '2nd nationally. I rebuilt the control system: Nav2, py_trees, actuators.',
     where: 'Robotics team, 2025 to now',
     brief:
       'First season in 2025: 2nd nationally and 6th in the international qualifications. I rebuilt the control system: Nav2 navigation, py_trees match strategy and the actuators (Dynamixel servos, linear actuators).',
@@ -48,6 +54,8 @@ export const missions: { name: string; where: string; brief: string; tags: strin
   },
   {
     name: 'HES-SO at Paléo',
+    year: '2024',
+    line: "Running the festival's science stand, three editions so far.",
     where: 'Festival outreach, 2024-2026',
     brief:
       'Running the HES-SO stand for three editions: solar protection in 2024, chronic pain and electrostimulators in 2025, Chladni figures in 2026.',
@@ -55,6 +63,8 @@ export const missions: { name: string; where: string; brief: string; tags: strin
   },
   {
     name: 'This portfolio',
+    year: '2026',
+    line: 'A planet generated live on the GPU, with an Atlas of worlds to collect.',
     where: 'Open source, 2026',
     brief: 'The site you are on: a procedural planet generated live on the GPU, with its own Atlas of collectable worlds.',
     tags: ['Astro', 'Svelte', 'Three.js', 'TSL'],
@@ -80,6 +90,15 @@ export const missions: { name: string; where: string; brief: string; tags: strin
     tags: ['Astro', 'Svelte', 'Tailwind'],
   },
 ];
+
+/** What I fly with, and the mission each set flew on: tools with a track record, not a keyword list. */
+export const instruments = [
+  { tools: 'C++, ROS 2, Nav2, py_trees', flew: 'Eurobot' },
+  { tools: 'Python, PX4, SuperPoint', flew: 'UAV thesis' },
+  { tools: 'Three.js, TSL, Svelte', flew: 'This site' },
+  { tools: 'Docker, Linux, Raspberry Pi 5', flew: 'Homelab' },
+];
+export const alsoAboard = ['Go', 'TypeScript', 'PyTorch', 'scikit-learn', 'MySQL'];
 
 export const offDuty = [
   { k: 'Archery', v: 'Club member, and the one behind its website and media.' },

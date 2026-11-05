@@ -76,10 +76,12 @@
     .planet-fallback {
         display: none;
         position: absolute;
-        right: -12vmin;
-        top: 12vh;
-        width: 80vmin;
-        height: 80vmin;
+        /* the page may aim it with --lens-*; otherwise it sits right of centre */
+        left: var(--lens-l, auto);
+        right: var(--lens-r, -12vmin);
+        top: var(--lens-t, 12vh);
+        width: var(--lens-d, 80vmin);
+        height: var(--lens-d, 80vmin);
         border-radius: 50%;
         background: radial-gradient(
             circle at 28% 32%,

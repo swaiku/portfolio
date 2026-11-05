@@ -10,7 +10,7 @@
 <style>
   .atlas-link {
     margin-right: clamp(16px, 2.6vw, 34px);
-    padding: 7px 12px; font: 400 0.72rem/1.4 var(--font-mono); color: var(--color-ink); white-space: nowrap; cursor: pointer;
+    padding: 7px 12px; font: 500 0.66rem/1.4 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-ink); white-space: nowrap; cursor: pointer;
     background: rgb(6 8 24 / 0.6); border: 1px solid var(--color-line-strong);
   }
   .atlas-link:hover { border-color: var(--color-amber); color: var(--color-amber); }
