@@ -82,19 +82,19 @@
 <style>
   .atlas {
     width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; padding: 16px; box-sizing: border-box; border: 0;
-    background: #04050b; color: var(--color-ink-2); overflow-y: auto;
+    background: var(--color-space); color: var(--color-ink-2); overflow-y: auto;
   }
   .atlas::backdrop { background: rgb(4 5 11 / 0.6); }
   /* the same ruled sheet as the page: cells joined by hairlines, nothing floating */
   .board { min-height: 100%; display: grid; grid-template-rows: auto 1fr; }
   .head {
     display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 6px 28px;
-    padding: 22px 26px; outline: 1px solid rgb(236 239 251 / 0.13); outline-offset: -0.5px;
+    padding: 22px 26px; outline: 1px solid var(--color-rule); outline-offset: -0.5px;
   }
   h2 { margin: 0; font: 700 clamp(2rem, 3.4vw, 3rem)/1 var(--font-display); letter-spacing: -0.045em; color: var(--color-ink); }
   .count { margin: 0; font: 500 0.95rem/1.4 var(--font-display); color: var(--color-dim); }
   .count b { color: var(--color-amber); font-weight: 500; }
-  .intro { grid-column: 1 / -1; margin: 0; max-width: 70ch; font-size: 0.9rem; line-height: 1.55; color: #a9aec6; }
+  .intro { grid-column: 1 / -1; margin: 0; max-width: 70ch; font-size: 0.9rem; line-height: 1.55; color: var(--color-ink-3); }
   .close { grid-row: 1; grid-column: 3; }
   button { background: none; border: 0; padding: 6px 0; cursor: pointer; }
   button:hover:not(:disabled) { color: var(--color-amber); }
@@ -104,7 +104,7 @@
   .cell {
     --r: #dfe3f7;
     position: relative; display: flex; flex-direction: column; gap: 8px; min-width: 0;
-    padding: 18px 22px 16px; outline: 1px solid rgb(236 239 251 / 0.13); outline-offset: -0.5px; background: #05060d;
+    padding: 18px 22px 16px; outline: 1px solid var(--color-rule); outline-offset: -0.5px; background: var(--color-tile);
   }
   .cell[data-rarity='uncommon'] { --r: #6fdca0; }
   .cell[data-rarity='rare'] { --r: #8fc7ff; }
@@ -126,7 +126,7 @@
   .seen .mark { border: 1px solid var(--r); background: radial-gradient(circle at 32% 30%, color-mix(in srgb, var(--r) 45%, transparent), transparent 70%); }
   h3 { margin: 0; font: 500 1rem/1.25 var(--font-display); letter-spacing: -0.02em; color: var(--color-ink); }
   .cell:not(.seen) h3 { color: var(--color-dim); }
-  .note { margin: 0; font-size: 0.82rem; line-height: 1.45; color: #a9aec6; }
+  .note { margin: 0; font-size: 0.82rem; line-height: 1.45; color: var(--color-ink-3); }
   .acts { margin: auto 0 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; }
 
   /* opening: the cells come up in reading order; a class just met lands with a flash of its rarity colour */
@@ -137,7 +137,7 @@
 
   .toast {
     position: fixed; z-index: 20; top: 24px; right: 24px; width: min(22rem, calc(100% - 48px));
-    padding: 18px 20px; box-sizing: border-box; background: #05060d; border: 1px solid var(--color-amber);
+    padding: 18px 20px; box-sizing: border-box; background: var(--color-tile); border: 1px solid var(--color-amber);
     box-shadow: 0 12px 32px rgb(0 0 0 / 0.5); animation: pop 0.7s var(--ease-out-expo);
   }
   .toast p { margin: 0; }

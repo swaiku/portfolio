@@ -37,11 +37,13 @@
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const DUR = 560;
     let raf = 0;
+    let heldTimer = 0;
     const onFrame = (e: Event) => {
       const { frame: src, kind } = (e as CustomEvent<{ frame: HTMLCanvasElement; kind?: string }>).detail;
       held = true;
       heldKind = kind;
-      setTimeout(() => (held = false), 4000); // never stuck if the new world does not start
+      clearTimeout(heldTimer);
+      heldTimer = window.setTimeout(() => (held = false), 4000); // never stuck if the new world does not start
       const cv = tear;
       if (!cv) return;
       const b = cv.getBoundingClientRect();
@@ -81,7 +83,7 @@
       raf = requestAnimationFrame(frame);
     };
     addEventListener('planet:frame', onFrame);
-    return () => { removeEventListener('planet:frame', onFrame); cancelAnimationFrame(raf); };
+    return () => { removeEventListener('planet:frame', onFrame); cancelAnimationFrame(raf); clearTimeout(heldTimer); };
   });
 
   const step = (d: number) => tune(TYPES[(Math.max(at, 0) + d + TYPES.length) % TYPES.length].id);
@@ -147,7 +149,7 @@
   /* the tuning screen: dark static, the class being tuned to, and the signal filling */
   .static {
     position: absolute; inset: 0; overflow: hidden; display: grid; place-items: center;
-    background: #04050b; opacity: 0; pointer-events: none; transition: opacity 1.1s ease;
+    background: var(--color-space); opacity: 0; pointer-events: none; transition: opacity 1.1s ease;
   }
   .static.on { opacity: 1; transition-duration: 0.35s; }
   .noise {

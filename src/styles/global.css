@@ -8,7 +8,12 @@
   --color-deep: #060818;
   --color-ink: #eceffb;
   --color-ink-2: #c6ccea;
-  --color-dim: #8f96c2;
+  --color-ink-3: #a9aec6; /* secondary lines under a title */
+  --color-dim: #8f96c2; /* labels */
+  --color-space: #04050b; /* the black behind a world: the lens tuning screen, the atlas */
+  --color-tile: #05060d;
+  --color-rule: rgb(236 239 251 / 0.13);
+  --color-on-accent: #120a06; /* ink on an accent fill */
   --color-amber: #ff7a3d; /* accent: overwritten at runtime by the current world's colour */
   --font-display: 'Unbounded', ui-sans-serif, system-ui, sans-serif;
   --font-body: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
@@ -48,7 +53,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-::selection { background: var(--color-amber); color: #120a24; }
+::selection { background: var(--color-amber); color: var(--color-on-accent); }
 :focus-visible {
   outline: 2px solid var(--color-amber);
   outline-offset: 3px;
@@ -85,7 +90,7 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
   line-height: 1.5;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #9095b0;
+  color: var(--color-dim);
   margin: 0;
 }
 .k.hi { color: var(--color-ink); }
@@ -107,10 +112,10 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
   flex-direction: column;
   min-height: 0;
   padding: clamp(16px, 2.6vh, 22px) clamp(18px, 1.8vw, 26px);
-  outline: 1px solid rgb(236 239 251 / 0.13);
+  outline: 1px solid var(--color-rule);
   outline-offset: -0.5px;
   /* opaque: the world shows only through the lens, and the tiles crop it like a porthole */
-  background: #05060d;
+  background: var(--color-tile);
   overflow: hidden;
 }
 .tile h2 { margin: 0; }
@@ -123,12 +128,14 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
 .t-payload { grid-column: 4 / 8; grid-row: 5 / 7; }
 .t-plan { grid-column: 8 / 11; grid-row: 5 / 7; }
 .t-log { grid-column: 11 / 13; grid-row: 6 / 7; justify-content: center; gap: 6px; }
-.t-uplink { grid-column: 11 / 13; grid-row: 5 / 6; justify-content: center; gap: 8px; background: var(--color-amber); outline-color: var(--color-amber); color: #120a06; }
-.t-uplink .k { color: #120a06; }
+.t-uplink { grid-column: 11 / 13; grid-row: 5 / 6; justify-content: center; gap: 8px; background: var(--color-amber); outline-color: var(--color-amber); color: var(--color-on-accent); }
+.t-uplink .k { color: var(--color-on-accent); }
 .t-uplink .call { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
 .t-uplink .k { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.8rem; }
 .t-uplink a { white-space: nowrap; }
-.t-uplink a { color: #120a06; text-decoration: none; padding: 4px 0; }
+.t-uplink a { color: var(--color-on-accent); text-decoration: none; padding: 4px 0; }
+/* the page's focus ring is the accent: on the accent tile it would vanish */
+.t-uplink a:focus-visible { outline-color: var(--color-on-accent); }
 .t-uplink a:hover { text-decoration: underline; text-underline-offset: 4px; }
 
 /* the lens: viewfinder corners, nothing else; the world shows through from the canvas behind */
@@ -151,33 +158,33 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
 .t-id h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(2.6rem, 4.2vw, 3.8rem); line-height: 0.95; letter-spacing: -0.045em; }
 /* the job reads second, right after the name */
 .role { margin: 12px 0 0; font-family: var(--font-display); font-weight: 500; font-size: clamp(1.2rem, 1.7vw, 1.55rem); line-height: 1.05; letter-spacing: -0.03em; color: var(--color-amber); }
-.lead { margin: 0; font-size: 0.95rem; line-height: 1.45; color: #c6cae0; text-wrap: pretty; }
-.sub { margin: 8px 0 0; font-size: 0.875rem; color: #a9aec6; }
+.lead { margin: 0; font-size: 0.95rem; line-height: 1.45; color: var(--color-ink-2); text-wrap: pretty; }
+.sub { margin: 8px 0 0; font-size: 0.875rem; color: var(--color-ink-3); }
 
 .missions { list-style: none; margin: 12px 0 0; padding: 0; }
 .missions li { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 2px 12px; padding: clamp(8px, 1.4vh, 12px) 0; border-top: 1px solid rgb(255 255 255 / 0.08); }
 .missions b { font-weight: 500; font-size: 0.95rem; line-height: 1.35; }
 .missions b a { text-decoration: none; }
 .missions b a:hover { color: var(--color-amber); }
-.missions p { grid-column: 2; margin: 0; font-size: 0.85rem; line-height: 1.45; color: #a9aec6; }
-.also { margin: auto 0 0; padding-top: 10px; font-size: 0.85rem; line-height: 1.5; color: #a9aec6; }
+.missions p { grid-column: 2; margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--color-ink-3); }
+.also { margin: auto 0 0; padding-top: 10px; font-size: 0.85rem; line-height: 1.5; color: var(--color-ink-3); }
 .also .k { margin-right: 10px; }
 .also a { text-decoration: none; color: var(--color-ink); }
 .also a:hover { color: var(--color-amber); }
 
-.t-log p { margin: 0; font-size: 0.85rem; line-height: 1.45; color: #c6cae0; }
+.t-log p { margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--color-ink-2); }
 
 .instruments { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px 12px; margin: 12px 0 0; align-items: baseline; }
-.instruments dt { font-size: 0.85rem; line-height: 1.35; color: #d6dbf5; }
+.instruments dt { font-size: 0.85rem; line-height: 1.35; color: var(--color-ink); }
 .instruments dd { margin: 0; text-align: right; color: var(--color-amber); }
 
 .plan { list-style: none; margin: 10px 0 0; padding: 0; }
 .plan li { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 0 10px; align-items: center; padding: 3px 0; font-size: 0.85rem; line-height: 1.35; }
-.plan .pin { width: 7px; height: 7px; border-radius: 50%; border: 1px solid #a9aec6; }
+.plan .pin { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--color-ink-3); }
 .plan .now .pin { background: var(--color-amber); border-color: var(--color-amber); }
 .plan .now .k { color: var(--color-amber); }
 
-.t-leave p { margin: 6px 0 0; font-size: 0.85rem; line-height: 1.45; color: #c6cae0; }
+.t-leave p { margin: 6px 0 0; font-size: 0.85rem; line-height: 1.45; color: var(--color-ink-2); }
 
 /* too small for one screen: the sheet becomes a column, the lens right after who I am */
 @media (max-width: 1023px), (max-height: 679px) {
