@@ -227,7 +227,8 @@
   let focusTimer = 0;
   const stepFocus = () => {
     if (baker.phase !== 'fadein' && baker.phase !== 'live') focused = false;
-    if (baker.phase !== 'fadein' || focused || reduced) return;
+    // a weak device keeps the plain fade-in: a full-screen animated blur costs it frames while the world is still settling
+    if (baker.phase !== 'fadein' || focused || reduced || quality.tier === 'low') return;
     focused = true;
     const root = document.documentElement;
     root.classList.remove('focus');
