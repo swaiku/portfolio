@@ -99,12 +99,14 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
 .sheet {
   position: relative;
   z-index: 2;
-  min-height: calc(100svh - 32px);
+  /* one screen of six equal rows, so the rows do not move when the web fonts land. A row never shrinks below its text,
+     and when the text cannot fit at all the sheet grows to it (min-content) and the page scrolls a little */
+  height: calc(100svh - 32px);
+  min-height: min-content;
   margin: 16px;
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  /* rows take their text, then share the rest of the screen evenly: no tile clips, and a short screen scrolls a little */
-  grid-template-rows: repeat(6, auto);
+  grid-template-rows: repeat(6, minmax(min-content, 1fr));
 }
 .tile {
   position: relative;
@@ -188,7 +190,7 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
 
 /* too small for one screen: the sheet becomes a column, the lens right after who I am */
 @media (max-width: 1023px), (max-height: 679px) {
-  .sheet { min-height: 0; margin: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; }
+  .sheet { height: auto; min-height: 0; margin: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; }
   .sheet > * { grid-column: 1 / -1 !important; grid-row: auto !important; }
   .t-id { order: -2; }
   .lens { order: -1; height: min(70svh, 560px); }
