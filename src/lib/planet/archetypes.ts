@@ -346,6 +346,14 @@ const C = ['a', 'e', 'o', 'u', 'ia', 'ei', 'ar', 'un', 'es', 'is'];
 const ROMAN = ['II', 'III', 'IV', 'V', 'VI', 'VII', 'IX'];
 
 const hsl = (h: number, s: number, l: number) => '#' + new THREE.Color().setHSL(((h % 1) + 1) % 1, s, l, THREE.SRGBColorSpace).getHexString(THREE.SRGBColorSpace);
+/** The accent is page text and the fill of the contact tile: lift its lightness until it reads at 4.5:1 on the dark
+ * tiles and under the tile's dark ink (relative luminance 0.2). A Color holds linear RGB, which luminance is defined on. */
+export const legible = (hex: string) => {
+  const c = new THREE.Color(hex);
+  const { h, s, l } = c.getHSL({ h: 0, s: 0, l: 0 }, THREE.SRGBColorSpace);
+  for (let k = l; 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b < 0.2 && k <= 1; k += 0.01) c.setHSL(h, s, k, THREE.SRGBColorSpace);
+  return '#' + c.getHexString(THREE.SRGBColorSpace);
+};
 
 function rollRing(r: () => number, h: number): RingSpec {
   const inner = 1.22 + r() * 0.45;
@@ -533,7 +541,7 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
   }
   // the UI accent takes the colour of the comet's head, so the page matches what is on screen
   if (family === 'comet') accent = hsl(new THREE.Color(...COMET_PALETTES[comet.palette].head).getHSL({ h: 0, s: 0, l: 0 }).h, 0.8, 0.62);
-  return { seed, name, kind: family, type, tpl, arch, moons, belt, terrainSeed, hue, scheme, sat, drift, ring, tilt, activity, size, companion, nebula, period, spots: type.jets ? 0 : spots, storms: type.jets ? 0 : storms, tempest, beamTilt, accent, temp, light, variance, comet };
+  return { seed, name, kind: family, type, tpl, arch, moons, belt, terrainSeed, hue, scheme, sat, drift, ring, tilt, activity, size, companion, nebula, period, spots: type.jets ? 0 : spots, storms: type.jets ? 0 : storms, tempest, beamTilt, accent: legible(accent), temp, light, variance, comet };
 }
 
 /**
