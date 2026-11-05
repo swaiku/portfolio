@@ -8,7 +8,7 @@
   import { sim } from '../../lib/planet/sim.svelte';
   import { BAKE, quality } from '../../lib/planet/quality.svelte';
   import { describe } from '../../lib/planet/facts';
-  import { atlas, boost, COOLDOWN, markLocked, noteWorld } from '../../lib/atlas.svelte';
+  import { atlas, boost, COOLDOWN, keepThumb, markLocked, noteWorld, wantsThumb } from '../../lib/atlas.svelte';
   import { stage } from '../../lib/interactions';
   import { createSkyMaterial } from '../../lib/planet/tsl/sky';
   import { createAtmosphereMaterial } from '../../lib/planet/tsl/atmosphere';
@@ -25,7 +25,7 @@
   const CAMERA_Z = 10;
   const SUN = new Vector3(-0.92, 0.3, 0.18).normalize();
 
-  const { renderer, size, advance } = useThrelte();
+  const { renderer, scene, camera, size, advance } = useThrelte();
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   
   let { u }: { u: Uniforms } = $props();
@@ -179,6 +179,28 @@
     u.flareProg.value = p;
     u.flare.value = MathUtils.smoothstep(p, 0, 0.1) * (1 - MathUtils.smoothstep(p, 0.5, 1));
   };
+  // the atlas keeps a small picture of the first world of each class: one extra frame, drawn and copied in the same
+  // task so the canvas still holds it, cropped around the body
+  let snapped = false;
+  const THUMB = 160;
+  const snap = () => {
+    try {
+      renderer.render(scene, camera.current);
+      const c = renderer.domElement;
+      const k = c.width / c.clientWidth;
+      const r = stage.r * 1.3;
+      const out = document.createElement('canvas');
+      out.width = out.height = THUMB;
+      const ctx = out.getContext('2d', { willReadFrequently: true })!;
+      ctx.drawImage(c, (stage.x - r) * k, (stage.y - r) * k, 2 * r * k, 2 * r * k, 0, 0, THUMB, THUMB);
+      // an all-black read means the frame was already gone: keep no picture rather than a black square
+      const px = ctx.getImageData(0, 0, THUMB, THUMB).data;
+      let lit = 0;
+      for (let i = 0; i < px.length; i += 16) lit += px[i] + px[i + 1] + px[i + 2];
+      if (lit < 4000) return;
+      keepThumb(atlas.current.id, out.toDataURL('image/webp', 0.75));
+    } catch { /* no picture: the atlas shows the class's mark instead */ }
+  };
   const side = (x: number) => MathUtils.smoothstep(Math.abs(x), 0.15, 0.45);
 
   useTask((dt) => {
@@ -275,6 +297,11 @@
       markLocked();
     }
     if (baker.phase !== 'live') lockedAt = 0;
+    if (!lockedAt) snapped = false;
+    else if (!snapped && performance.now() - lockedAt > 1200 && wantsThumb()) {
+      snapped = true;
+      snap();
+    }
     if (acc > 0.4) {
       acc = 0;
       sim.cool = lockedAt ? Math.max(0, Math.ceil(COOLDOWN - (performance.now() - lockedAt) / 1000)) : COOLDOWN;

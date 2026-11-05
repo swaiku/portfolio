@@ -20,6 +20,8 @@ export const CLASSES: Record<string, string> = {
 interface Save {
   /** the seed each class was first seen in */
   seen: Record<string, string>;
+  /** a small picture of that first world, taken once it is on screen (a data URL) */
+  thumbs: Record<string, string>;
   misses: number;
   last?: RollArgs;
   opened?: boolean;
@@ -32,7 +34,7 @@ interface Save {
 /** seconds a locked world stays before the next survey, or a reload, may replace it */
 export const COOLDOWN = 8;
 const KEY = 'swaiku:atlas:v1';
-const EMPTY = (): Save => ({ seen: {}, misses: 0, args: {} });
+const EMPTY = (): Save => ({ seen: {}, thumbs: {}, misses: 0, args: {} });
 const load = (): Save => {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null');
@@ -52,8 +54,8 @@ export const atlas = $state({
 });
 
 const save = () => {
-  const { seen, misses, last, args, opened, lockedAt } = atlas;
-  try { localStorage.setItem(KEY, JSON.stringify({ seen, misses, last, args, opened, lockedAt })); } catch { /* storage unavailable */ }
+  const { seen, thumbs, misses, last, args, opened, lockedAt } = atlas;
+  try { localStorage.setItem(KEY, JSON.stringify({ seen, thumbs, misses, last, args, opened, lockedAt })); } catch { /* storage unavailable */ }
 };
 
 let toastTimer = 0;
@@ -119,6 +121,16 @@ export const openAtlas = () => {
   track('atlas_opened', { seen: seenCount() });
   save();
   dispatchEvent(new Event('atlas:open'));
+};
+
+/** The atlas wants a picture of the world on screen: only the first world of a class, and only once. */
+export const wantsThumb = () => {
+  const { id, seed } = atlas.current;
+  return !!id && atlas.seen[id] === seed && !atlas.thumbs[id];
+};
+export const keepThumb = (id: string, url: string) => {
+  atlas.thumbs[id] = url;
+  save();
 };
 
 /** The world finished baking: the cooldown starts now. */
