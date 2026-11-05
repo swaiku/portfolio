@@ -56,7 +56,6 @@ The personal site of Swaiku: Master's student in Data Science at HES-SO in Lausa
 [![Three.js][three-shield]][three-url]
 [![TypeScript][ts-shield]][ts-url]
 [![Tailwind CSS][tailwind-shield]][tailwind-url]
-[![GSAP][gsap-shield]][gsap-url]
 [![Bun][bun-shield]][bun-url]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -146,7 +145,5 @@ The personal content is not covered by it and stays all rights reserved: the tex
 [ts-url]: https://www.typescriptlang.org
 [tailwind-shield]: https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white
 [tailwind-url]: https://tailwindcss.com
-[gsap-shield]: https://img.shields.io/badge/GSAP-0AE448?style=for-the-badge&logo=greensock&logoColor=black
-[gsap-url]: https://gsap.com
 [bun-shield]: https://img.shields.io/badge/Bun-FBF0DF?style=for-the-badge&logo=bun&logoColor=black
 [bun-url]: https://bun.sh
