@@ -272,6 +272,7 @@
     const radius = scale * look.size * Math.min(halfH, halfW);
     // a planet sinking to the page end shows a cap: keep its top at the middle of the screen whatever its size, so enough of it is seen
     if (look.kind === 'planet') y = Math.max(y, -0.05 - radius / halfH);
+    y += stages.state.shift;
 
     if (group) {
       group.rotation.set(look.tilt[0] + pointer.y * 0.03, 0, look.tilt[1]);

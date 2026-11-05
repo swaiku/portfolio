@@ -11,10 +11,15 @@ export interface Stage { x: number; y: number; s: number }
  * The pose eases from one section to the next across the whole scroll gap between them, so the body glides along with
  * the page instead of snapping to a new target when a section crosses the viewport. `scrub` adds a catch-up, which also
  * smooths out the steps of a mouse wheel.
+ *
+ * A lone section is a window the body sits in (the home page lens): its pose is in page coordinates, and `state.shift`
+ * carries it along with the scroll, unsmoothed, so the body never drifts out of the window.
  */
 export function trackStages() {
   const target: Stage = { x: 0.5, y: 0, s: 0.9 };
-  const state = { scroll: 0 };
+  const state = { scroll: 0, shift: 0 };
+  let lone = false;
+  const pin = () => (state.shift = lone ? (2 * scrollY) / innerHeight : 0);
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let timeline: gsap.core.Timeline | undefined;
 
@@ -28,6 +33,8 @@ export function trackStages() {
     timeline?.scrollTrigger?.kill();
     timeline?.kill();
     const sections = Array.from(document.querySelectorAll('[data-stage]'));
+    lone = sections.length === 1;
+    pin();
     if (!sections.length) return;
     const mobile = innerWidth / innerHeight < 0.9 || innerWidth < 760;
     const max = Math.max(document.documentElement.scrollHeight - innerHeight, 1);
@@ -76,6 +83,7 @@ export function trackStages() {
   const observer = new ResizeObserver(onResize);
   observer.observe(document.documentElement);
   addEventListener('resize', onResize);
+  addEventListener('scroll', pin, { passive: true });
   return {
     target,
     state,
@@ -83,6 +91,7 @@ export function trackStages() {
     dispose: () => {
       observer.disconnect();
       removeEventListener('resize', onResize);
+      removeEventListener('scroll', pin);
       clearTimeout(resizeTimer);
       timeline?.scrollTrigger?.kill();
       timeline?.kill();

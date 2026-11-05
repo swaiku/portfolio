@@ -88,12 +88,13 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
   <Atlas client:only="svelte" />
 
   <script>
-    // the scene poses the world from `data-stage`: aim it at the middle of the lens, sized to its height
+    // the scene poses the world from `data-stage`: aim it at the middle of the lens, sized to its height.
+    // The pose is in page coordinates (as if unscrolled): the scene adds the scroll itself
     const lens = document.querySelector<HTMLElement>('[data-lens]')!;
     const aim = () => {
       const r = lens.getBoundingClientRect();
       const x = ((r.left + r.width / 2) / innerWidth - 0.5) * 2;
-      const y = -((r.top + r.height / 2) / innerHeight - 0.5) * 2;
+      const y = -((r.top + scrollY + r.height / 2) / innerHeight - 0.5) * 2;
       const s = (0.46 * Math.min(r.width, r.height)) / (0.5 * Math.min(innerWidth, innerHeight));
       lens.dataset.stage = [x, y, s].map((v) => v.toFixed(3)).join(',');
       // the same aim for the CSS stand-in shown when there is no GPU
@@ -106,5 +107,7 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
     };
     aim();
     addEventListener('resize', aim);
+    // the CSS stand-in sits in the fixed layer too: move it with the lens
+    addEventListener('scroll', aim, { passive: true });
   </script>
 </Base>
