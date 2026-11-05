@@ -2,7 +2,7 @@
 
 export const site = {
   handle: 'Jérémy',
-  role: 'Data engineer', // TODO: confirm the title to lead with
+  role: 'Data engineer',
   name: 'Jérémy',
   base: 'Fribourg, CH',
   timezone: 'Europe/Zurich',
