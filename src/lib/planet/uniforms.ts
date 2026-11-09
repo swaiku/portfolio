@@ -18,6 +18,8 @@ export const createUniforms = () => ({
   ringGaps: [v2(), v2(), v2()], hasRing: uniform(0), gas: uniform(0), gasA: v3(), gasB: v3(), nebA: v3(), nebB: v3(), nebC: v3(), nebShape: uniform(0),
   // comets: head and ion-tail colours, then (length, ion, ion width, streaks) and (dust, bend, kink, head size), and a noise seed
   cometHead: v3(), cometTip: v3(), cometA: uniform(new Vector4()), cometB: uniform(new Vector4()), cometSeed: uniform(0),
+  // (striae, anti-tail, shells, sodium tail) and (fragments, their spacing)
+  cometC: uniform(new Vector4()), cometD: uniform(new Vector2()),
   // binary stars: where each star is, and the radius each one hides things with (0 when there is no companion)
   primaryAt: v3(), companionAt: v3(), primaryR: uniform(0), companionR: uniform(0), primaryScale: uniform(1),
   // a star's slow variation in brightness: amplitude, and rate in rad/s
@@ -25,7 +27,7 @@ export const createUniforms = () => ({
   // solar storm: envelope of the current flare (0 when quiet), how far through it we are, its size, and where on the limb it rises
   flare: uniform(0), flareProg: uniform(0), flareAmt: uniform(0), flareSize: uniform(1), flareRate: uniform(0), flareDir: v3(0, 1, 0),
   sea: uniform(0.1), hasLiq: uniform(0), strata: uniform(0), strataF: uniform(6), ice: uniform(0),
-  glowAmt: uniform(0), glowDay: uniform(0), glowMode: uniform(0), cloudAmt: uniform(1), activity: uniform(0.7), spots: uniform(0.1), storms: uniform(0), pulsar: uniform(0), beamTilt: uniform(0.8),
+  glowAmt: uniform(0), glowDay: uniform(0), glowMode: uniform(0), cloudAmt: uniform(1), cloudFloor: uniform(0), activity: uniform(0.7), spots: uniform(0.1), storms: uniform(0), pulsar: uniform(0), beamTilt: uniform(0.8),
   br: v3(7.6, 17.8, 45), scatter: uniform(0.62),
   hole: { exposure: uniform(1.3), doppler: uniform(0.75), diskIn: uniform(0.2), diskOut: uniform(0.6), ring: uniform(1) },
   terrain: createTerrainUniforms(),
@@ -136,6 +138,7 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
     u.nebC.value = color(Role.liquid, [0.6, 0.8]);
     u.nebShape.value = w.nebula;
     look.sizeK = 1;
+    look.shiftX = -0.2; // a wide picture: pulled in so the screen edge does not crop it
     return look;
   }
   if (w.kind === 'comet') {
@@ -147,8 +150,10 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
     u.cometA.value.set(c.length, c.ion, c.ionWidth, c.streak);
     u.cometB.value.set(c.dust, c.curve, c.kink, c.head);
     u.cometSeed.value = c.seed;
+    u.cometC.value.set(c.striae, c.anti, c.shells, c.sodium);
+    u.cometD.value.set(c.fragments, c.gap);
     look.sizeK = 0.5;
-    look.shiftX = -0.2; // toward the middle of the screen
+    look.shiftX = -0.4; // toward the middle of the screen, so the tails have room
     return look;
   }
   if (w.kind === 'hole') {
@@ -170,6 +175,7 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
   const terrace = t.terrace ? Math.round(t.terrace * v.terrace) : v.terrace > 1.35 && !a.gas ? 5 : 0;
   u.terrain.terrace.value = terrace;
   u.terrain.dry.value = t.dry ? 1 : 0;
+  u.terrain.crater.value = t.crater ?? 0;
   u.terrain.bands.value = (a.gas?.bands ?? 0) * v.bands;
   u.terrain.swirl.value = (a.gas?.swirl ?? 0) * v.swirl;
   u.gas.value = a.gas ? 1 : 0;
@@ -180,15 +186,18 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
 
   u.hasLiq.value = a.liquid ? 1 : 0;
   u.sea.value = a.liquid ? a.liquid.level + v.sea : -9;
-  u.liqDeep.value = a.liquid ? color(Role.liquid, a.liquid.deep) : new Vector3();
-  u.liqShallow.value = a.liquid ? color(Role.liquid, a.liquid.shallow, 1) : new Vector3();
+  // a sea keeps its hue but not its full strength: deep liquid is dark and a little grey, whatever it is made of
+  const mute = (c: Vector3, k: number, gain: number) => c.lerp(new Vector3().setScalar(c.x * 0.2126 + c.y * 0.7152 + c.z * 0.0722), 1 - k).multiplyScalar(gain);
+  u.liqDeep.value = a.liquid ? mute(color(Role.liquid, a.liquid.deep), 0.8, 0.7) : new Vector3();
+  u.liqShallow.value = a.liquid ? mute(color(Role.liquid, a.liquid.shallow, 1), 0.7, 0.75) : new Vector3();
   // terraces already cut the ground into layers: strata on top of them would turn into a busy, pixelated weave
   const stepped = terrace > 0;
   u.strata.value = clamp(a.strata * v.strata * (stepped ? 0.6 : 1), 0, 0.9);
   u.strataF.value = a.strataF * v.strataF * (stepped ? 0.8 : 1);
   u.ice.value = clamp((a.ice?.amount ?? 0) * v.ice, 0, 1);
   u.iceCol.value = color(Role.ground, a.ice?.color ?? [0, 1]);
-  u.cloudAmt.value = clamp(a.cloud.amt * v.clouds, 0, 1);
+  u.cloudFloor.value = a.cloud.floor ?? 0;
+  u.cloudAmt.value = a.cloud.floor ? 1 : clamp(a.cloud.amt * v.clouds, 0, 1); // a full deck stays full
   u.cloudTint.value = color(Role.air, a.cloud.tint);
   u.glowAmt.value = a.glow?.amt ?? 0;
   u.glowMode.value = a.glow?.mode ?? 0;

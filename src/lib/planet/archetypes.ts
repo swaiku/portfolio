@@ -15,9 +15,9 @@ export interface Archetype {
   gas?: { bands: number; swirl: number }; // a gas giant: banded, no ground, no relief
   strata: number;
   strataF: number;
-  terrain: { cfreq: number; amp: number; ridge: number; warp: number; terrace: number; dry: boolean };
+  terrain: { cfreq: number; amp: number; ridge: number; warp: number; terrace: number; dry: boolean; crater?: number }; // crater: how impact-scarred, 0 to 1
   ice?: { color: Tone; amount: number };
-  cloud: { tint: Tone; amt: number };
+  cloud: { tint: Tone; amt: number; floor?: number }; // floor: a cloud deck with no gaps, 0 to 1
   atmo: { power: number; tone: Tone; scatter: number };
   sun: Tone;
   glow?: { color: Tone; mode: 0 | 1; amt: number; day: number };
@@ -29,7 +29,7 @@ export const ARCHETYPES: Archetype[] = [
     id: 'ember', label: 'Magma',
     ramp: [[0.48, 0.00], [0.66, 0.01], [0.81, 0.04], [0.89, 0.10], [0.92, 0.28]],
     strata: 0.15, strataF: 6,
-    terrain: { cfreq: 1.5, amp: 0.3, ridge: 0.5, warp: 0.4, terrace: 0, dry: true },
+    terrain: { cfreq: 1.5, amp: 0.3, ridge: 0.5, warp: 0.4, terrace: 0, dry: true, crater: 0.15 },
     cloud: { tint: [0.30, 0.05], amt: 0.45 },
     atmo: { power: 46, tone: [1.00, 0.55], scatter: 0.55 }, sun: [1.00, 0.72],
     glow: { color: [1.00, 0.51], mode: 1, amt: 2.2, day: 0.4 },
@@ -79,7 +79,7 @@ export const ARCHETYPES: Archetype[] = [
     id: 'frostbloom', label: 'Frost',
     ramp: [[0.74, 0.09], [0.60, 0.36], [0.65, 0.63], [1.00, 0.86], [0.00, 1.00]],
     strata: 0.25, strataF: 5,
-    terrain: { cfreq: 1.2, amp: 0.2, ridge: 0.3, warp: 0.25, terrace: 0, dry: true },
+    terrain: { cfreq: 1.2, amp: 0.2, ridge: 0.3, warp: 0.25, terrace: 0, dry: true, crater: 0.35 },
     ice: { color: [1.00, 0.93], amount: 0.55 },
     cloud: { tint: [1.00, 0.87], amt: 0.4 },
     atmo: { power: 48, tone: [1.00, 0.64], scatter: 0.55 }, sun: [1.00, 0.90],
@@ -100,7 +100,7 @@ export const ARCHETYPES: Archetype[] = [
     id: 'rust', label: 'Canyon',
     ramp: [[0.77, 0.01], [0.93, 0.10], [0.96, 0.30], [0.91, 0.46], [1.00, 0.63]],
     strata: 0.8, strataF: 11,
-    terrain: { cfreq: 1.0, amp: 0.35, ridge: 0.6, warp: 0.35, terrace: 8, dry: true },
+    terrain: { cfreq: 1.0, amp: 0.35, ridge: 0.6, warp: 0.35, terrace: 8, dry: true, crater: 0.25 },
     cloud: { tint: [1.00, 0.74], amt: 0.15 },
     atmo: { power: 44, tone: [1.00, 0.57], scatter: 0.6 }, sun: [1.00, 0.84],
     sky: [[0.89, 0.02], [0.78, 0.02], [0.78, 0.02]],
@@ -109,7 +109,7 @@ export const ARCHETYPES: Archetype[] = [
     id: 'obsidian', label: 'Glass',
     ramp: [[0.23, 0.00], [0.39, 0.01], [0.54, 0.02], [0.55, 0.03], [0.59, 0.06]],
     strata: 0.3, strataF: 8,
-    terrain: { cfreq: 1.4, amp: 0.28, ridge: 0.5, warp: 0.5, terrace: 0, dry: true },
+    terrain: { cfreq: 1.4, amp: 0.28, ridge: 0.5, warp: 0.5, terrace: 0, dry: true, crater: 0.6 },
     cloud: { tint: [1.00, 0.66], amt: 0.25 },
     atmo: { power: 40, tone: [1.00, 0.60], scatter: 0.5 }, sun: [1.00, 0.82],
     glow: { color: [1.00, 0.52], mode: 1, amt: 1.5, day: 0.9 },
@@ -149,11 +149,53 @@ export const ARCHETYPES: Archetype[] = [
     id: 'cinder', label: 'Dead world',
     ramp: [[0.3, 0.015], [0.32, 0.04], [0.3, 0.09], [0.25, 0.17], [0.2, 0.3]],
     strata: 0.3, strataF: 9,
-    terrain: { cfreq: 1.7, amp: 0.3, ridge: 0.65, warp: 0.5, terrace: 0, dry: true },
+    terrain: { cfreq: 1.7, amp: 0.3, ridge: 0.65, warp: 0.5, terrace: 0, dry: true, crater: 1 },
     cloud: { tint: [0.1, 0.4], amt: 0 },
     atmo: { power: 4, tone: [0.5, 0.4], scatter: 0.2 }, sun: [0.25, 0.85],
     glow: { color: [1, 0.5], mode: 1, amt: 2.1, day: 0.85 },
     sky: [[0.6, 0.02], [0.5, 0.015], [0.6, 0.025]],
+  },
+  // --- added after launch: each belongs to a class of its own (see `late` in TYPES), so the older classes roll as before ---
+  {
+    id: 'abyss', label: 'Ocean world',
+    ramp: [[0.55, 0.10], [0.5, 0.24], [0.45, 0.40], [0.4, 0.56], [0.2, 0.82]],
+    liquid: { deep: [0.92, 0.05], shallow: [0.8, 0.36], level: 0.46 },
+    strata: 0.05, strataF: 6,
+    terrain: { cfreq: 1.7, amp: 0.2, ridge: 0.25, warp: 0.3, terrace: 0, dry: false },
+    ice: { color: [0.3, 0.94], amount: 0.3 },
+    cloud: { tint: [0.2, 0.92], amt: 0.95 },
+    atmo: { power: 36, tone: [1.00, 0.62], scatter: 0.7 }, sun: [0.3, 0.92],
+    glow: { color: [1.00, 0.55], mode: 0, amt: 0.9, day: 0 },
+    sky: [[0.9, 0.04], [0.85, 0.06], [0.9, 0.05]],
+  },
+  {
+    id: 'glacier', label: 'Ice world',
+    ramp: [[0.55, 0.30], [0.45, 0.50], [0.35, 0.68], [0.22, 0.82], [0.1, 0.95]],
+    strata: 0.1, strataF: 5,
+    terrain: { cfreq: 1.3, amp: 0.16, ridge: 0.55, warp: 0.45, terrace: 0, dry: true, crater: 0.2 },
+    ice: { color: [0.25, 0.96], amount: 0.8 },
+    cloud: { tint: [0.15, 0.95], amt: 0.2 },
+    atmo: { power: 22, tone: [0.9, 0.66], scatter: 0.4 }, sun: [0.2, 0.94],
+    sky: [[0.85, 0.05], [0.8, 0.05], [0.9, 0.06]],
+  },
+  {
+    id: 'regolith', label: 'Cratered world',
+    ramp: [[0.10, 0.05], [0.10, 0.13], [0.12, 0.23], [0.12, 0.35], [0.08, 0.55]],
+    strata: 0.05, strataF: 7,
+    terrain: { cfreq: 1.4, amp: 0.22, ridge: 0.15, warp: 0.25, terrace: 0, dry: true, crater: 1 },
+    cloud: { tint: [0.1, 0.4], amt: 0 },
+    atmo: { power: 3, tone: [0.4, 0.5], scatter: 0.12 }, sun: [0.1, 0.95],
+    sky: [[0.6, 0.02], [0.5, 0.02], [0.6, 0.03]],
+  },
+  {
+    id: 'veil', label: 'Shrouded world',
+    ramp: [[0.6, 0.02], [0.7, 0.07], [0.7, 0.16], [0.6, 0.28], [0.5, 0.42]],
+    strata: 0.1, strataF: 6,
+    terrain: { cfreq: 1.3, amp: 0.25, ridge: 0.35, warp: 0.4, terrace: 0, dry: true },
+    cloud: { tint: [0.45, 0.80], amt: 1, floor: 0.85 },
+    atmo: { power: 58, tone: [0.9, 0.70], scatter: 0.9 }, sun: [0.3, 0.9],
+    glow: { color: [1.00, 0.5], mode: 1, amt: 1.2, day: 0.2 },
+    sky: [[0.8, 0.03], [0.7, 0.03], [0.8, 0.04]],
   },
 ];
 
@@ -181,6 +223,7 @@ export const HOLES: Template[] = [
 
 export const NEBULAE: Template[] = [
   { id: 'nebula', label: 'Nebula', ramp: [[0.6, 0.02], [0.7, 0.1], [0.75, 0.22], [0.8, 0.4], [0.5, 0.8]], sky: [[0.8, 0.05], [0.7, 0.05], [0.8, 0.06]] },
+  { id: 'galaxy', label: 'Galaxy', ramp: [[0.6, 0.02], [0.7, 0.1], [0.75, 0.22], [0.8, 0.4], [0.5, 0.8]], sky: [[0.5, 0.02], [0.5, 0.02], [0.5, 0.02]] },
 ];
 
 export const COMETS: Template[] = [
@@ -189,6 +232,8 @@ export const COMETS: Template[] = [
 
 /** The forms a nebula can take; the shader paints each one. */
 export const NEBULA_SHAPES = ['emission cloud', 'planetary shell', 'supernova bubble', 'bipolar', 'pillars', 'veil'] as const;
+/** One more picture the nebula shader can paint, never rolled as a nebula: a spiral galaxy. */
+export const GALAXY_SHAPE = NEBULA_SHAPES.length;
 
 export type Kind = 'planet' | 'star' | 'hole' | 'nebula' | 'comet';
 
@@ -207,9 +252,11 @@ export interface ObjectType {
   binary?: boolean; // a companion star
   jets?: boolean; // twin beams along the axis
   ring?: boolean; // always ringed
+  late?: boolean; // added after launch: rolled in a second draw, so a seed that gave an older class still does
 }
 
-const ROCKY = ARCHETYPES.filter((a) => !a.gas && a.id !== 'cinder').map((a) => a.id);
+const LATE_WORLDS = ['abyss', 'glacier', 'regolith', 'veil'];
+const ROCKY = ARCHETYPES.filter((a) => !a.gas && a.id !== 'cinder' && !LATE_WORLDS.includes(a.id)).map((a) => a.id);
 const GAS = ARCHETYPES.filter((a) => a.gas).map((a) => a.id);
 
 export const TYPES: ObjectType[] = [
@@ -225,6 +272,11 @@ export const TYPES: ObjectType[] = [
   { id: 'hole', label: 'Black hole', rarity: 'epic', weight: 0.5, family: 'hole', pool: ['quasar', 'cold', 'singularity'] },
   { id: 'titan', label: 'Titan', rarity: 'legendary', weight: 0.25, family: 'planet', pool: ['jovian'], moons: [3, 3], ring: true },
   { id: 'twin-pulsar', label: 'Twin pulsar', rarity: 'legendary', weight: 0.25, family: 'star', pool: ['magnetar', 'pulsar'], binary: true, jets: true },
+  { id: 'crater', label: 'Cratered world', rarity: 'common', weight: 6, family: 'planet', pool: ['regolith'], late: true },
+  { id: 'ocean', label: 'Ocean world', rarity: 'uncommon', weight: 5, family: 'planet', pool: ['abyss'], late: true },
+  { id: 'ice', label: 'Ice world', rarity: 'uncommon', weight: 5, family: 'planet', pool: ['glacier'], late: true },
+  { id: 'shroud', label: 'Shrouded world', rarity: 'rare', weight: 3, family: 'planet', pool: ['veil'], late: true },
+  { id: 'galaxy', label: 'Galaxy', rarity: 'epic', weight: 1, family: 'nebula', pool: ['galaxy'], late: true },
 ];
 
 /** The second star of a binary: its mass ratio to the primary, how far apart they are, and what it looks like. */
@@ -307,6 +359,12 @@ export interface Comet {
   curve: number; // how far the dust tail bends; the sign picks the side
   head: number; // size of the coma
   seed: number;
+  striae: number; // bands fanned across the dust tail, as on the great comets; 0 for none
+  anti: number; // a short spike pointing at the sun
+  shells: number; // hoods of gas round the head, thrown off as the nucleus turns
+  sodium: number; // a third, thin amber tail
+  fragments: number; // pieces of a broken nucleus trailing the head, 0 to 3
+  gap: number; // how far apart the fragments ride
 }
 
 /** Head colour (the glow of the coma's gas) and the colour the ion tail fades into. */
@@ -315,6 +373,9 @@ export const COMET_PALETTES = [
   { name: 'cyan', head: [0.1, 0.65, 1], tip: [0.2, 0.3, 1] },
   { name: 'violet', head: [0.55, 0.4, 1], tip: [0.5, 0.2, 0.95] },
   { name: 'sodium amber', head: [1, 0.55, 0.12], tip: [0.3, 0.45, 1] },
+  { name: 'ice white', head: [0.75, 0.9, 1], tip: [0.35, 0.6, 1] },
+  { name: 'rose', head: [1, 0.35, 0.55], tip: [0.6, 0.3, 1] },
+  { name: 'gold', head: [1, 0.8, 0.3], tip: [1, 0.45, 0.2] },
 ] as const;
 
 /** How far this world strays from its template's terrain, so two worlds of one class do not share a character. */
@@ -373,16 +434,27 @@ const pulsarPeriod = (klass: number, spread: number) =>
 export interface RollArgs { seed: number; kind?: string; avoid?: string; hue?: number; boost?: Record<string, number> }
 
 export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?: number, boost?: Record<string, number>): World {
-  const r = mulberry(seed);
-  const weighted = (list: ObjectType[]) => {
-    const w = (t: ObjectType) => t.weight * (boost?.[t.id] ?? 1);
-    let k = r() * list.reduce((n, t) => n + w(t), 0);
+  const w = (t: ObjectType) => t.weight * (boost?.[t.id] ?? 1);
+  const draw = (list: ObjectType[], rnd: () => number) => {
+    let k = rnd() * list.reduce((n, t) => n + w(t), 0);
     return list.find((t) => (k -= w(t)) < 0) ?? list[list.length - 1];
   };
+  // The classes added after launch are drawn first, on a stream of their own: with their share of the odds the roll goes to
+  // one of them, otherwise it carries on exactly as it always did. So a seed that gave an older class still gives the same world.
+  if (!kind) {
+    const late = TYPES.filter((t) => t.late);
+    const r2 = mulberry((seed ^ 0x51ed270b) >>> 0);
+    const share = late.reduce((n, t) => n + w(t), 0) / TYPES.reduce((n, t) => n + w(t), 0);
+    if (r2() < share) return rollWorld(seed, draw(late, r2).id, avoid, avoidHue, boost);
+  }
+  const r = mulberry(seed);
+  const weighted = (list: ObjectType[]) => draw(list, r);
   const forcedTpl = kind ? TEMPLATES.find((t) => t.id === kind) : undefined;
+  const early = TYPES.filter((t) => !t.late);
+  const sameFamily = TYPES.filter((t) => t.family === kind);
   const type = TYPES.find((t) => t.id === kind)
     ?? (forcedTpl ? TYPES.find((t) => t.pool.includes(forcedTpl.id)) : undefined)
-    ?? weighted(TYPES.filter((t) => !kind || t.family === kind).length ? TYPES.filter((t) => !kind || t.family === kind) : TYPES);
+    ?? weighted(!kind ? early : sameFamily.some((t) => !t.late) ? sameFamily.filter((t) => !t.late) : sameFamily.length ? sameFamily : early);
   const family = type.family;
 
   let candidates = type.pool;
@@ -425,7 +497,7 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
   const beamTilt = 0.45 + r() * 0.7;
   // log-uniform inside each class: a few millisecond pulsars (fastest known, PSR J1748-2446ad: 1.4 ms), mostly ordinary
   // ones around a second, and the odd very slow one (slowest known, PSR J0901-4046: 75.9 s)
-  const nebula = Math.floor(r() * NEBULA_SHAPES.length);
+  const nebula = tpl.id === 'galaxy' ? (r(), GALAXY_SHAPE) : Math.floor(r() * NEBULA_SHAPES.length);
   const klass = r();
   const spread = r();
   const period = pulsarPeriod(klass, spread);
@@ -523,6 +595,7 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
     curve: (r() < 0.5 ? -1 : 1) * (0.3 + r() * 1.5),
     head: 0.7 + r() * 0.7,
     seed: r() * 100,
+    striae: 0, anti: 0, shells: 0, sodium: 0, fragments: 0, gap: 0.7,
   };
   // rolled last, and only for beam stars, so no other seed moves: one in six is a fancy pulsar in a colour no star has
   if (type.jets && r() < 1 / 6) {
@@ -531,6 +604,13 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
     sat = 0;
     accent = hsl(h, 0.75, 0.62);
   }
+  // rolled after everything else again, so no seed moves: what sets one comet apart from the next
+  const some = (chance: number, lo: number, hi: number) => (r() < chance ? lo + r() * (hi - lo) : 0);
+  Object.assign(comet, {
+    striae: some(0.35, 0.5, 1), anti: some(0.25, 0.5, 1), shells: some(0.4, 0.4, 1), sodium: some(0.3, 0.5, 1),
+    fragments: r() < 0.2 ? 1 + Math.floor(r() * 3) : 0, gap: 0.5 + r() * 0.5,
+  });
+  if (r() < 0.3) comet.palette = 4 + Math.floor(r() * 3);
   // the UI accent takes the colour of the comet's head, so the page matches what is on screen
   if (family === 'comet') accent = hsl(new THREE.Color(...COMET_PALETTES[comet.palette].head).getHSL({ h: 0, s: 0, l: 0 }).h, 0.8, 0.62);
   return { seed, name, kind: family, type, tpl, arch, moons, belt, terrainSeed, hue, scheme, sat, drift, ring, tilt, activity, size, companion, nebula, period, spots: type.jets ? 0 : spots, storms: type.jets ? 0 : storms, tempest, beamTilt, accent, temp, light, variance, comet };

@@ -80,7 +80,7 @@
   const sphere = new SphereGeometry(1, 48, 32);
   const rockGeometry = new IcosahedronGeometry(1, 1);
 
-  const BELT_ROCKS = 700;
+  const BELT_ROCKS = 1600; // many small rocks rather than a few boulders: a belt is mostly rubble
   const belt = new InstancedMesh(rockGeometry, beltRock, BELT_ROCKS);
   belt.frustumCulled = false;
   const dummy = new Object3D();
@@ -94,7 +94,8 @@
       const rad = b.inner + (b.outer - b.inner) * (0.15 + 0.7 * rnd() + 0.15 * rnd());
       dummy.position.set(Math.cos(ang) * rad, (rnd() - 0.5) * 0.07 * (1 + (rad - b.inner)), Math.sin(ang) * rad);
       dummy.rotation.set(rnd() * 6, rnd() * 6, rnd() * 6);
-      dummy.scale.setScalar(0.012 + rnd() * rnd() * 0.05);
+      const s = 0.004 + rnd() ** 4 * 0.03;
+      dummy.scale.set(s * (0.7 + rnd() * 0.6), s * (0.5 + rnd() * 0.5), s * (0.7 + rnd() * 0.6)); // lumps, not balls
       dummy.updateMatrix();
       belt.setMatrixAt(i, dummy.matrix);
     }

@@ -16,6 +16,11 @@ export const CLASSES: Record<string, { hint: string; note: string }> = {
   hole: { hint: 'Hold on to it. Do not let go.', note: 'Past the event horizon, nothing, light included, climbs back out.' },
   titan: { hint: 'Log every common and uncommon class, then meet a Titan.', note: 'Rings sit inside the Roche limit, where tides tear apart anything trying to become a moon.' },
   'twin-pulsar': { hint: 'Log a pulsar and a binary star, then meet a twin pulsar.', note: 'Two pulsars in orbit shed gravitational waves and slowly spiral together.' },
+  crater: { hint: 'Strike it: tap the surface three times.', note: 'With no air or weather to wear them down, craters last for billions of years.' },
+  ocean: { hint: 'Dive: go to the bottom of the page.', note: 'An ocean world has no shore: its sea can run hundreds of kilometres deep.' },
+  ice: { hint: 'Read the mission briefing.', note: "Under an ice world's shell, tides can keep an ocean liquid, as on Europa." },
+  shroud: { hint: 'Sound it: press and hold the planet.', note: 'Venus hides under clouds of sulfuric acid; only radar sees its ground.' },
+  galaxy: { hint: 'Long exposure: press and hold on it.', note: 'A spiral arm is a wave of crowding that stars pass through, not a fixed set of stars.' },
 };
 
 /** Tasks the visitor can do. Each logs the class it is tied to if that world is on screen; `probe` ones also pay out once. */
@@ -33,6 +38,11 @@ export const TASKS: Record<string, { label: string; type?: string; probe: boolea
   accretion: { label: 'Accretion', type: 'hole', probe: false },
   barycentre: { label: 'Barycentre', type: 'binary', probe: false },
   catch: { label: 'Catch', type: 'comet', probe: false },
+  impact: { label: 'Impact', type: 'crater', probe: false },
+  dive: { label: 'Dive', type: 'ocean', probe: false },
+  briefing: { label: 'Briefing', type: 'ice', probe: false },
+  sounding: { label: 'Sounding', type: 'shroud', probe: false },
+  exposure: { label: 'Exposure', type: 'galaxy', probe: false },
 };
 
 export const TASK_HINTS: Record<string, string> = {

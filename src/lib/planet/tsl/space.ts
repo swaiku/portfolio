@@ -1,8 +1,11 @@
-import { Fn, abs, clamp, dot, exp, float, length, max, mix, normalize, normalView, positionLocal, positionViewDirection, pow, select, smoothstep, texture, uv, vec3, vec4 } from 'three/tsl';
+import {
+  Fn, abs, clamp, dot, exp, float, instanceIndex, length, max, mix, normalize, normalView, positionGeometry, positionLocal, positionViewDirection, pow,
+  select, smoothstep, texture, uv, vec3, vec4,
+} from 'three/tsl';
 import { CustomBlending, DoubleSide, NodeMaterial, OneFactor, OneMinusSrcColorFactor } from 'three/webgpu';
 import type { Node, Texture } from 'three/webgpu';
 import type { Uniforms } from '../uniforms';
-import { fbm, gnoise, tonemap } from './common';
+import { fbm, gnoise, mute, SUN_DIR, tonemap, worley } from './common';
 
 export const BEAM_LENGTH = 4.6;
 
@@ -15,15 +18,19 @@ const additive = (m: NodeMaterial) => {
   return m;
 };
 
-/** Cratered grey-ish rock lit by the sun; moons, belt rocks and comet nuclei. `seed` keeps each one different. */
+/**
+ * Belt rocks, drawn as instances. Each is lit on its own faces (the view-space normal follows the instance, which the local
+ * position does not: lit by that, a whole belt shaded like one big sphere and every rock came out a flat disc).
+ */
 export const createRockMaterial = (u: Uniforms, seed: number) => {
   const m = new NodeMaterial();
   m.fragmentNode = Fn(() => {
-    const N = normalize(positionLocal);
-    const L = normalize(u.sunL);
-    const c = fbm(N.mul(4).add(vec3(seed, seed * 0.7, 3)), 4).add(0.5);
-    const pits = smoothstep(0.55, 0.3, fbm(N.mul(9).add(vec3(seed, 1, 2)), 3).add(0.5));
-    const albedo = mix(u.ramp[1], u.ramp[3], clamp(c, 0, 1)).mul(float(1).sub(pits.mul(0.35))).mul(0.85);
+    const N = normalize(normalView);
+    const L = normalize(vec3(...SUN_DIR));
+    const own = float(instanceIndex).mul(0.37).add(seed); // every rock its own patch of noise, and its own shade of the palette
+    const c = fbm(positionGeometry.mul(2.2).add(vec3(own, own.mul(0.7), 3)), 3).add(0.5);
+    const tone = fbm(vec3(own, 1, 2), 1).add(0.5);
+    const albedo = mute(mix(u.ramp[1], u.ramp[3], clamp(tone, 0, 1)), 0.55).mul(c.mul(0.7).add(0.45)).mul(0.7);
     const col = albedo.mul(u.sunCol).mul(2.2).mul(max(dot(N, L), 0)).add(albedo.mul(0.012));
     return vec4(tonemap(col.mul(u.fade)), 1);
   })();
@@ -41,7 +48,11 @@ export const createMoonMaterial = (u: Uniforms, tint: Node, style: Node, seed: N
     const L = normalize(u.sunL);
     const sd = vec3(seed, seed.mul(0.7), 3);
     const c = fbm(N.mul(4).add(sd), 4).add(0.5);
-    const pits = smoothstep(0.55, 0.3, fbm(N.mul(9).add(sd), 3).add(0.5));
+    // impact craters at two sizes: a dark bowl inside a bright rim
+    const c1 = worley(N.mul(5).add(sd));
+    const c2 = worley(N.mul(12).add(sd));
+    const pits = smoothstep(0.3, 0.08, c1).add(smoothstep(0.3, 0.08, c2).mul(0.6))
+      .sub(smoothstep(0.07, 0, abs(c1.sub(0.36))).mul(0.5)).sub(smoothstep(0.07, 0, abs(c2.sub(0.36))).mul(0.3));
     const cracks = smoothstep(0.07, 0, abs(gnoise(N.mul(7).add(sd))));
     const blot = smoothstep(0.35, 0.65, c);
     const rock = float(1).sub(pits.mul(0.4)).add(c.sub(0.5).mul(0.5));

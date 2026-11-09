@@ -11,7 +11,7 @@ const onPrimary = (x: number, y: number) => stage.r > 0 && near(x, y, stage.x, s
 const onCompanion = (x: number, y: number) => stage.binary && near(x, y, stage.cx, stage.cy, stage.cr);
 const live = () => sim.state === 'LOCKED';
 
-const SECTIONS: Record<string, string> = { payload: 'payload', missions: 'missions', 'off-duty': 'off-duty' };
+const SECTIONS: Record<string, string> = { briefing: 'briefing', payload: 'payload', missions: 'missions', 'off-duty': 'off-duty' };
 
 /** Wires every way a visitor can earn something. Returns the cleanup. */
 export function startInteractions(tz: string) {
@@ -34,7 +34,8 @@ export function startInteractions(tz: string) {
     const body = onPrimary(e.clientX, e.clientY) || onCompanion(e.clientX, e.clientY);
     down = { x: e.clientX, y: e.clientY, at: performance.now(), body };
     last = { x: e.clientX, y: e.clientY };
-    if (body && atlas.current.id === 'hole') hold = window.setTimeout(() => down && fire('accretion'), 3000);
+    const held = ({ hole: 'accretion', shroud: 'sounding', galaxy: 'exposure' } as Record<string, string>)[atlas.current.id];
+    if (body && held) hold = window.setTimeout(() => down && fire(held), 3000);
   });
   on('pointermove', (e) => {
     if (!down) return;
@@ -57,6 +58,7 @@ export function startInteractions(tz: string) {
     if (!onPrimary(x, y)) return;
     taps = [...taps.filter((k) => now - k.t < 3000), { t: now, x, y }];
     if (id === 'comet') fire('catch');
+    if (id === 'crater' && taps.length >= 3) { fire('impact'); taps = []; }
     if (id === 'gas' && taps.length >= 5) { fire('stir'); taps = []; }
     if (id === 'pulsar' && taps.length >= 3) {
       const [a, b, c] = taps.slice(-3).map((k) => k.t);
@@ -89,6 +91,7 @@ export function startInteractions(tz: string) {
     const max = document.documentElement.scrollHeight - innerHeight;
     if (scrollY < 50) { if (leg === 2) fire('day-cycle'); leg = 1; }
     else if (leg === 1 && scrollY > max - 80) leg = 2;
+    if (scrollY > max - 80 && atlas.current.id === 'ocean') fire('dive');
   }, { passive: true });
 
   // nobody touching anything
