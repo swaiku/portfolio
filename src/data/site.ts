@@ -102,10 +102,10 @@ export const alsoAboard = ['Go', 'TypeScript', 'PyTorch', 'scikit-learn', 'MySQL
 // `rim` and `motto` are what the patch says round its edge; `icon` is its emblem (data/icons.ts)
 export const offDuty = [
   { k: 'Archery', v: 'Club member, and the one behind its website and media.', rim: 'Archery', motto: 'Les Ours Blancs', icon: 'bow-arrow' },
-  { k: 'Volunteering', v: 'Secretary of the youth association Jeunesse Montet-Frasses.', rim: 'Volunteering', motto: 'Montet-Frasses', icon: 'heart-handshake' },
   { k: 'Running', v: 'Endurance training, one long run at a time.', rim: 'Running', motto: 'Endurance', icon: 'footprints' },
+  { k: 'Fitness', v: 'Strength training, alongside the running.', rim: 'Fitness', motto: 'Strength', icon: 'dumbbell' },
   { k: 'Linux', v: 'On the desk and on the homelab, and I like to know how it works.', rim: 'Linux', motto: 'Homelab', icon: 'terminal' },
-  { k: 'Gaming', v: 'Which is how Godot ended up in the stack.', rim: 'Gaming', motto: 'Godot', icon: 'gamepad-2' },
+  { k: 'Gaming', v: 'Off the clock, controller in hand.', rim: 'Gaming', motto: 'Press start', icon: 'gamepad-2' },
   { k: 'Space exploration', v: 'The reason this page looks the way it does.', rim: 'Exploration', motto: 'Ad astra', icon: 'rocket' },
   { k: 'Privacy and open source', v: 'Self-hosting by default.', rim: 'Privacy', motto: 'Open source', icon: 'lock-keyhole' },
 ] as const;
