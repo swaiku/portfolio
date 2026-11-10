@@ -318,7 +318,7 @@
     // a mouse drag turns the body; the push it leaves behind fades out
     drag += stage.drag;
     stage.drag = 0;
-    angle += reduced ? 0 : dt * 0.05;
+    angle += reduced ? 0 : dt * (look.galaxy ? 0.006 : 0.05); // a galaxy's stars orbit on their own: the disk itself barely turns
     angle -= drag * 0.4; // rotateY turns the sampling frame, so the sign is opposite to the surface
     drag *= Math.exp(-dt * 3);
     spin += (stages.state.scroll * 0.6 - spin) * (reduced ? 1 : 1 - Math.exp(-dt * 1.6));

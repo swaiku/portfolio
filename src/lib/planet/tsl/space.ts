@@ -1,5 +1,5 @@
 import {
-  Fn, abs, clamp, cos, dot, exp, float, floor, hash, instanceIndex, sin, length, max, mix, normalize, normalView, positionGeometry, positionLocal, positionViewDirection, pow,
+  Fn, abs, clamp, cos, dot, exp, float, hash, instanceIndex, sin, length, max, mix, normalize, normalView, positionGeometry, positionLocal, positionViewDirection, pow,
   select, smoothstep, texture, uv, vec3, vec4,
 } from 'three/tsl';
 import { CustomBlending, DoubleSide, NodeMaterial, OneFactor, OneMinusSrcColorFactor, SpriteNodeMaterial } from 'three/webgpu';
@@ -100,6 +100,10 @@ export const createNebulaMaterial = (u: Uniforms, picture: Texture) => {
  * A spiral galaxy as a swarm of star sprites, one instance each, after Bruno Simon's TSL galaxy (three.js journey).
  * Everything about a star comes from a hash of its index, so there is no buffer to fill or rebuild: the world only
  * sets the number of arms, how tightly they wind and the three colours. The disk lies in the xz plane.
+ *
+ * Every star runs its own orbit, the inner ones lapping the outer ones. An arm is a traffic jam on the way: a star
+ * slows as it reaches one, crowds there with the others, then speeds up again on the far side. So the arms stay
+ * put while the stars stream through them (a density wave), instead of the whole picture turning as one.
  */
 export const createGalaxyMaterial = (u: Uniforms) => {
   const m = additive(new SpriteNodeMaterial()) as SpriteNodeMaterial;
@@ -107,18 +111,21 @@ export const createGalaxyMaterial = (u: Uniforms) => {
   const rnd = (salt: number) => hash(instanceIndex.add(salt * 104729));
   const t = rnd(1); // 0 at the centre, 1 at the rim
   const radius = pow(t, 1.5).mul(1.3); // crowded toward the middle
-  const arm = floor(rnd(2).mul(u.galArms)).mul(2 * Math.PI).div(u.galArms);
-  // the pattern turns as one piece: an arm is a wave the stars pass through, so it never winds itself up
-  const angle = arm.add(radius.mul(u.galTwist)).sub(u.clock.mul(0.015));
+  const free = rnd(2).mul(2 * Math.PI).add(u.clock.mul(0.1).div(radius.add(0.18))); // a flat rotation curve: same speed, shorter lap
+  const jam = smoothstep(0.03, 0.25, t).mul(0.88); // no arms in the bulge; below 1 so a star never runs backward
+  const wave = (a: Node) => a.sub(radius.mul(u.galTwist)).mul(u.galArms); // where an angle sits between two arms
+  const angle = free.sub(sin(wave(free)).mul(jam).div(u.galArms));
+  const crest = cos(wave(angle)).mul(0.5).add(0.5); // 1 on an arm
   const cube = (x: Node) => x.mul(x).mul(x); // keeps the sign, and most stars close to their arm
   const haze = rnd(7).lessThan(0.03); // a few wide, faint sprites: the unresolved light between the stars
-  const spread = radius.mul(0.3).add(0.1);
+  const spread = radius.mul(0.3).add(0.1).mul(float(1.7).div(u.galArms)); // tighter with more arms, or they merge
   const off = vec3(cube(rnd(3).mul(2).sub(1)), cube(rnd(4).mul(2).sub(1)).mul(mix(0.9, 0.22, smoothstep(0, 0.45, t))), cube(rnd(5).mul(2).sub(1))).mul(spread);
   m.positionNode = u.rotP.mul(vec3(cos(angle).mul(radius), 0, sin(angle).mul(radius)).add(off));
   m.scaleNode = select(haze, float(0.5), pow(rnd(6), 4).mul(0.05).add(0.012));
   m.colorNode = Fn(() => {
     const core = mix(u.nebC, vec3(1, 0.95, 0.85), 0.5);
-    const tint = mix(core, mix(u.nebB, u.nebA, rnd(8)), smoothstep(0.04, 0.55, t));
+    // young bright stars sit on the arms; between them only the older, dimmer ones are left
+    const tint = mix(core, mix(u.nebA, u.nebB, crest.mul(rnd(8).mul(0.5).add(0.5))), smoothstep(0.04, 0.55, t)).mul(mix(1, crest.mul(0.75).add(0.25), jam));
     const d = length(uv().sub(0.5));
     // dimmer toward the middle, where thousands of sprites pile up and would burn to a flat white disc
     const point = clamp(float(0.035).div(d).sub(0.07), 0, 3).mul(mix(0.12, 1, smoothstep(0, 0.35, t)));
