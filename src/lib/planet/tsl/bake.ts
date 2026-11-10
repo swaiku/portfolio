@@ -1,6 +1,6 @@
 import {
   Fn, float, mix, normalize, floor, fract, abs, clamp, select, smoothstep, cos, uniform, uv, vec2, vec3, vec4,
-  positionGeometry, dot, If, max, texture, length, sin, exp, pow,
+  positionGeometry, dot, If, max, min, texture, length, sin, exp, pow, mx_cell_noise_float, mx_cell_noise_vec3,
 } from 'three/tsl';
 import { NodeMaterial } from 'three/webgpu';
 import type { Node, Texture } from 'three/webgpu';
@@ -38,13 +38,35 @@ export interface TerrainUniforms {
   dry: ReturnType<typeof uniform>;
   bands: ReturnType<typeof uniform>; // gas giants: band count pole to pole, 0 for rocky worlds
   swirl: ReturnType<typeof uniform>; // gas giants: how far turbulence bends the bands
+  craters: ReturnType<typeof uniform>; // 0 none, 1 a battered dead world
 }
 
 export const createTerrainUniforms = (): TerrainUniforms => ({
   seed: uniform(new Vector3()),
   cfreq: uniform(1.15), amp: uniform(0.2), ridge: uniform(0.16),
-  warp: uniform(0), terrace: uniform(0), dry: uniform(0), bands: uniform(0), swirl: uniform(0.05),
+  warp: uniform(0), terrace: uniform(0), dry: uniform(0), bands: uniform(0), swirl: uniform(0.05), craters: uniform(0),
 });
+
+/**
+ * Impact craters at four sizes: each grid cell holds at most one, kept well inside the cell so only that cell is read.
+ * A bowl with a flat floor and a raised rim, deeper the wider it is. Baked into the height, so it costs nothing per frame.
+ */
+const craterField = (p: Node, seed: Node) => {
+  let total: Node = float(0);
+  for (const [f, chance, salt] of [[4, 0.35, 1], [9, 0.4, 2], [19, 0.45, 3], [40, 0.5, 4]]) {
+    const q = p.mul(f).add(seed.mul(salt * 1.3));
+    const cell = floor(q);
+    const centre = cell.add(mx_cell_noise_vec3(cell.add(salt * 17)).mul(0.4).add(0.3));
+    const r = mx_cell_noise_float(cell.add(salt * 31)).mul(0.12).add(0.09); // in cells; centre ± 1.4r stays inside the cell
+    const x = length(q.sub(centre)).div(r);
+    const bowl = max(min(x.mul(x).sub(1), 0), -0.7);
+    const rim = exp(pow(x.sub(1).div(0.3), 2).negate()).mul(0.32);
+    const here = mx_cell_noise_float(cell.add(salt * 53)).lessThan(chance);
+    total = total.add(select(here, bowl.add(rim).mul(r.div(f)), float(0)));
+  }
+  return total.mul(10);
+};
+
 
 /** Pass 1: terrain height into a float32 target (one evaluation per texel). */
 export const createTerrainHeightBake = (t: TerrainUniforms) => {
@@ -68,6 +90,9 @@ export const createTerrainHeightBake = (t: TerrainUniforms) => {
     If(t.terrace.greaterThan(0.5), () => {
       const s = h.mul(t.terrace);
       h.assign(floor(s).add(smoothstep(0.2, 0.8, fract(s))).div(t.terrace));
+    });
+    If(t.craters.greaterThan(0.001), () => {
+      h.addAssign(craterField(p, t.seed).mul(t.craters).mul(land));
     });
     // gas giants: no ground at all, just zonal bands along the latitude, bent by turbulence and sheared against each other
     If(t.bands.greaterThan(0.5), () => {

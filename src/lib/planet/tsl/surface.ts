@@ -102,7 +102,8 @@ export const createPlanetMaterial = (u: Uniforms, planetTex: Texture, cloudTex: 
       .mul(detB.mul(1.3).add(0.5).add(detA.mul(0.4)).mul(0.45).add(0.8).add(grain.mul(0.1)));
 
     const depth = max(u.sea.sub(h), 0);
-    const liq = mix(u.liqShallow, u.liqDeep, smoothstep(0, 0.16, depth)).add(u.liqShallow.mul(exp(depth.mul(-70))).mul(0.7));
+    // a sea that covers the world shades over a longer depth range, so its floor still shows below the surface
+    const liq = mix(u.liqShallow, u.liqDeep, smoothstep(0, max(u.sea.sub(0.25), 0).add(0.16), depth)).add(u.liqShallow.mul(exp(depth.mul(-70))).mul(0.7));
 
     const iceM = float(0).toVar();
     const iceCol = u.iceCol.toVar();

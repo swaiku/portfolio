@@ -19,11 +19,12 @@ const ROCK: Record<string, Rock> = {
   rust: { density: [3.8, 5], atmo: 'CO₂ · N₂ · Ar', bar: [0.05, 0.8], ores: ['Hematite', 'Iron', 'Manganese'] },
   obsidian: { density: [3.4, 4.8], atmo: 'CO₂ · SO₂', bar: [0.5, 5], ores: ['Silica glass', 'Titanium', 'Tungsten'] },
   cinder: { density: [4.8, 5.7], atmo: '', bar: [0, 0], ores: ['Graphite', 'Iron', 'Platinum group'] },
+  pelagic: { density: [2.8, 4], atmo: 'N₂ · O₂ · H₂O', bar: [1, 5], ores: ['Water', 'Deuterium', 'Magnesium salts'] },
 };
 
 /** How well each ground template could host life before pressure, gravity and water are weighed in. */
 const HABITABLE: Record<string, number> = {
-  verdigris: 0.85, orchid: 0.8, saltglass: 0.45, frostbloom: 0.3, cobalt: 0.25, rust: 0.2, sulfur: 0.12, obsidian: 0.03, ember: 0.02, cinder: 0,
+  verdigris: 0.85, orchid: 0.8, saltglass: 0.45, frostbloom: 0.3, cobalt: 0.25, rust: 0.2, sulfur: 0.12, obsidian: 0.03, ember: 0.02, cinder: 0, pelagic: 0.7,
 };
 
 const bell = (x: number, mid: number, width: number) => Math.exp(-(((x - mid) / width) ** 2));

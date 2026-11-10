@@ -170,6 +170,7 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
   const terrace = t.terrace ? Math.round(t.terrace * v.terrace) : v.terrace > 1.35 && !a.gas ? 5 : 0;
   u.terrain.terrace.value = terrace;
   u.terrain.dry.value = t.dry ? 1 : 0;
+  u.terrain.craters.value = t.craters ?? 0;
   u.terrain.bands.value = (a.gas?.bands ?? 0) * v.bands;
   u.terrain.swirl.value = (a.gas?.swirl ?? 0) * v.swirl;
   u.gas.value = a.gas ? 1 : 0;
