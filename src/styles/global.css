@@ -177,17 +177,12 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
 
 .t-log p { margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--color-ink-2); }
 
-/* drawing-office sheets: a real spacecraft in thin line, one per visit (see data/crafts.ts) */
+/* drawing-office sheets: a real spacecraft as a wireframe of its 3D model, one per visit (see data/crafts.ts) */
 .fig { position: relative; min-height: 0; }
 /* the drawing never sets the tile's height: it takes the room the text leaves */
-.craft { position: absolute; inset: 0; width: 100%; height: 100%; display: none; overflow: visible; fill: none; stroke: var(--color-ink-2); stroke-width: 1; stroke-linejoin: round; stroke-linecap: round; }
-.craft * { vector-effect: non-scaling-stroke; }
-.craft .d { stroke: var(--color-dim); opacity: 0.55; }
+.craft { position: absolute; inset: 0; width: 100%; height: 100%; display: none; object-fit: contain; }
 .cap { display: none; }
-[data-craft='0'] :is(.craft, .cap)[data-i='0'], [data-craft='1'] :is(.craft, .cap)[data-i='1'], [data-craft='2'] :is(.craft, .cap)[data-i='2'] { display: block; }
-.tag path { stroke: var(--color-amber); opacity: 0.7; }
-.tag circle { fill: var(--color-tile); stroke: var(--color-amber); }
-.tag text { fill: var(--color-amber); stroke: none; font-family: var(--font-display); font-weight: 500; font-size: 7px; text-anchor: middle; dominant-baseline: central; }
+[data-craft='0'] :is(.craft, .cap)[data-i='0'], [data-craft='1'] :is(.craft, .cap)[data-i='1'] { display: block; }
 @media (prefers-reduced-motion: no-preference) {
   .bay .craft { animation: plot-x 1.6s var(--ease-out-expo) 0.3s both; }
   .ascent .craft { animation: plot-y 1.8s var(--ease-out-expo) 0.3s both; }
@@ -195,11 +190,10 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
 @keyframes plot-x { from { clip-path: inset(-10% 110% -10% -10%); } to { clip-path: inset(-10%); } }
 @keyframes plot-y { from { clip-path: inset(110% -10% -10% -10%); } to { clip-path: inset(-10%); } }
 
-/* payload: the craft on the left, its numbered parts list on the right */
+/* payload: the craft on the left, what flew on the right */
 .bay { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 0 clamp(12px, 1.4vw, 22px); margin-top: 12px; }
 .instruments { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 12px; margin: 0; align-content: space-evenly; align-items: baseline; }
-.instruments dt { display: flex; gap: 10px; align-items: baseline; font-size: 0.85rem; line-height: 1.35; color: var(--color-ink); }
-.instruments dt .k { color: var(--color-amber); }
+.instruments dt { font-size: 0.85rem; line-height: 1.35; color: var(--color-ink); }
 .instruments dd { margin: 0; text-align: right; color: var(--color-amber); }
 
 /* flight plan: the steps climb a launcher, the current one at the top; a station line runs from each step across it */

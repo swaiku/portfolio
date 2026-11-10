@@ -3,7 +3,9 @@ import Base from '../layouts/Base.astro';
 import Lens from '../components/Lens.svelte';
 import Atlas from '../components/Atlas.svelte';
 import { site, flightPlan, missions, instruments, alsoAboard, offDuty } from '../data/site';
-import { launchers, telescopes, LAUNCHER_BOX, TELESCOPE_BOX } from '../data/crafts';
+import { launchers, telescopes } from '../data/crafts';
+
+const craft = (file: string) => `${import.meta.env.BASE_URL.replace(/\/$/, '')}/crafts/${file}`;
 
 const featured = missions.filter((m) => m.line);
 const others = missions.filter((m) => !m.line);
@@ -58,17 +60,10 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
       <h2 id="payload-h" class="k hi">Payload <span class="k">· flown on</span></h2>
       <div class="bay" data-crafts data-craft="0">
         <div class="fig" aria-hidden="true">
-          {telescopes.map((c, n) => (
-            <svg class="craft" data-i={n} viewBox={TELESCOPE_BOX}>
-              <g set:html={c.svg} />
-              {c.tags!.map(([x, y, tx, ty], i) => (
-                <g class="tag"><path d={`M${x} ${y}L${tx} ${ty}`} /><circle cx={tx} cy={ty} r="6.5" /><text x={tx} y={ty}>{i + 1}</text></g>
-              ))}
-            </svg>
-          ))}
+          {telescopes.map((c, n) => (<img class="craft" data-i={n} src={craft(c.file)} alt="" loading="lazy" decoding="async" />))}
         </div>
         <dl class="instruments">
-          {instruments.map((i, n) => (<><dt><span class="k" aria-hidden="true">{n + 1}</span>{i.tools}</dt><dd class="k">{i.flew}</dd></>))}
+          {instruments.map((i) => (<><dt>{i.tools}</dt><dd class="k">{i.flew}</dd></>))}
         </dl>
       </div>
       <p class="also"><span class="k">Also aboard</span> {alsoAboard.join(', ')}</p>
@@ -79,7 +74,7 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
       <h2 id="plan-h" class="k hi">Flight plan</h2>
       <div class="ascent" data-crafts data-craft="0">
         <div class="fig" aria-hidden="true">
-          {launchers.map((c, n) => (<svg class="craft" data-i={n} viewBox={LAUNCHER_BOX} set:html={c.svg} />))}
+          {launchers.map((c, n) => (<img class="craft" data-i={n} src={craft(c.file)} alt="" loading="lazy" decoding="async" />))}
         </div>
         <ol class="plan">
           {plan.map((s) => (
