@@ -169,7 +169,7 @@ html.focus .planet-host canvas {
 :is(.craft, .cap).on { display: block; }
 /* the probe's name sits under its drawing */
 .bay .craft { height: calc(100% - 26px); }
-.bay .cap { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; }
+.bay .cap { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; white-space: nowrap; }
 @media (prefers-reduced-motion: no-preference) {
   .bay .craft { animation: plot-x 1.6s var(--ease-out-expo) 0.3s both; }
   .ascent .craft { animation: plot-y 1.8s var(--ease-out-expo) 0.3s both; }
@@ -195,7 +195,35 @@ html.focus .planet-host canvas {
 .plan .now .pin { background: var(--color-amber); border-color: var(--color-amber); }
 .plan .now .k { color: var(--color-amber); }
 
-.t-leave p { margin: 6px 0 0; font-size: 0.85rem; line-height: 1.45; color: var(--color-ink-2); }
+/* shore leave: a crew patch per pastime; the row of emblems picks which one is on the table */
+.patches { display: grid; grid-template-columns: clamp(76px, 26%, 92px) minmax(0, 1fr); gap: 0 clamp(12px, 1.4vw, 20px); align-items: center; }
+.stage { position: relative; aspect-ratio: 1; }
+.slot { position: absolute; inset: 0; display: none; }
+.slot.on { display: block; }
+.patch { display: block; width: 100%; height: 100%; overflow: visible; }
+.patch .cloth { fill: #0b0e22; stroke: var(--color-ink-2); stroke-width: 1.4; }
+.patch .stitch { fill: none; stroke: var(--color-ink-2); stroke-width: 0.9; stroke-dasharray: 2.2 1.8; opacity: 0.6; } /* the sewn edge */
+.patch .field { fill: color-mix(in oklab, var(--color-amber) 16%, #070a1a); }
+.patch .rule { fill: none; stroke: var(--color-amber); stroke-width: 1.6; }
+.patch .limb { fill: var(--color-amber); opacity: 0.85; }
+.patch .orbit { fill: none; stroke: var(--color-ink); stroke-width: 0.8; opacity: 0.45; }
+.patch .star { fill: var(--color-ink); }
+.patch .emblem { fill: none; stroke: var(--color-ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; paint-order: stroke; filter: drop-shadow(0 0 1.5px #070a1a); }
+.patch .rim { fill: var(--color-ink); font-family: var(--font-display); font-weight: 700; font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; text-anchor: middle; }
+.patch .motto { font-weight: 500; font-size: 6.2px; letter-spacing: 0.2em; fill: var(--color-ink-2); }
+@media (prefers-reduced-motion: no-preference) {
+  .slot.on { animation: pin 0.45s var(--ease-out-expo); }
+}
+@keyframes pin { from { transform: rotate(-14deg) scale(0.86); opacity: 0; } }
+.about { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.line { margin: 0; font-size: 0.8rem; line-height: 1.4; color: var(--color-ink-2); min-height: 2.8em; }
+.line span { display: none; }
+.line span.on { display: inline; }
+.line b { font-weight: 500; color: var(--color-ink); }
+.emblems { display: flex; flex-wrap: wrap; gap: 3px; }
+.emblems button { width: 24px; height: 24px; padding: 4px; border: 1px solid var(--color-rule); border-radius: 50%; background: none; color: var(--color-dim); cursor: pointer; }
+.emblems svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.emblems button.on { color: var(--color-amber); border-color: var(--color-amber); }
 
 /* too small for one screen: the sheet becomes a column, the lens right after who I am */
 @media (max-width: 1023px), (max-height: 679px) {

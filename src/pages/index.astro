@@ -2,6 +2,8 @@
 import Base from '../layouts/Base.astro';
 import Lens from '../components/Lens.svelte';
 import Atlas from '../components/Atlas.svelte';
+import Patch from '../components/Patch.astro';
+import { icons } from '../data/icons';
 import { site, flightPlan, missions, instruments, alsoAboard, offDuty } from '../data/site';
 import { launchers, probes } from '../data/crafts';
 
@@ -96,8 +98,35 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
     </section>
 
     <section id="off-duty" class="tile t-leave" aria-labelledby="leave-h">
-      <h2 id="leave-h" class="k hi">Shore leave</h2>
-      <p>{offDuty.map((o) => o.k).join(' · ')}</p>
+      <!-- one crew patch per pastime: hovering, focusing or tapping a small emblem brings its patch and its line up -->
+      <div class="patches" data-patches>
+        <div class="stage">{offDuty.map((o, n) => (<div class:list={['slot', { on: !n }]} data-i={n}><Patch n={n} rim={o.rim} motto={o.motto} icon={o.icon} /></div>))}</div>
+        <div class="about">
+          <h2 id="leave-h" class="k hi">Shore leave</h2>
+          <p class="line" aria-live="polite">{offDuty.map((o, n) => (<span class:list={{ on: !n }} data-i={n}><b>{o.k}.</b> {o.v}</span>))}</p>
+          <div class="emblems">
+            {offDuty.map((o, n) => (
+              <button type="button" class:list={{ on: !n }} data-i={n} aria-pressed={!n ? 'true' : 'false'} aria-label={o.k}>
+                <svg viewBox="0 0 24 24" aria-hidden="true" set:html={icons[o.icon]} />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <script is:inline>
+        document.querySelectorAll('[data-patches]').forEach((el) => {
+          const show = (e) => {
+            const b = e.target.closest('button[data-i]');
+            if (!b || b.classList.contains('on')) return;
+            el.querySelectorAll('[data-i]').forEach((x) => {
+              const on = x.dataset.i === b.dataset.i;
+              x.classList.toggle('on', on);
+              if (x.tagName === 'BUTTON') x.setAttribute('aria-pressed', on);
+            });
+          };
+          ['pointerover', 'focusin', 'click'].forEach((t) => el.addEventListener(t, show));
+        });
+      </script>
     </section>
 
     <section id="uplink" class="tile t-uplink" aria-labelledby="uplink-h">
