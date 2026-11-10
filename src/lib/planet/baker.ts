@@ -1,6 +1,6 @@
 import {
   ClampToEdgeWrapping, FloatType, HalfFloatType, LinearFilter, LinearMipmapLinearFilter, Mesh, NearestFilter,
-  OrthographicCamera, PlaneGeometry, RGBAFormat, RenderTarget, RepeatWrapping, Scene,
+  OrthographicCamera, PlaneGeometry, RGBAFormat, RenderTarget, RepeatWrapping, Scene, UnsignedByteType,
 } from 'three/webgpu';
 import { float } from 'three/tsl';
 import type { NodeMaterial, WebGPURenderer } from 'three/webgpu';
@@ -8,14 +8,16 @@ import { randomSeed, rollWorld, type RollArgs, type World } from './archetypes';
 import { applyWorld, type Uniforms, type WorldLook } from './uniforms';
 import { createOpticalDepthBake, OPTICS_H, OPTICS_W } from './tsl/atmosphere';
 import {
-  createCloudDensityBake, createNebulaBake, createSkyBake, createSlopePass, createTerrainHeightBake, NEBULA_ASPECT, strip, terrainMoisture,
+  createAlbedoBake, createCloudDensityBake, createNebulaBake, createSkyBake, createSlopePass, createTerrainHeightBake, NEBULA_ASPECT, strip,
+  terrainGlow,
 } from './tsl/bake';
 
-interface Pass { material: NodeMaterial; target: RenderTarget; strips: number }
+/** `keep`: the scene samples this pass's texture too, so it outlives the bake like the last one does. */
+interface Pass { material: NodeMaterial; target: RenderTarget; strips: number; keep?: boolean }
 
-const makeTarget = (w: number, h: number, kind: 'color' | 'color-nomip' | 'float') =>
+const makeTarget = (w: number, h: number, kind: 'color' | 'color-nomip' | 'float', bytes = false) =>
   new RenderTarget(w, h, {
-    type: kind === 'float' ? FloatType : HalfFloatType,
+    type: kind === 'float' ? FloatType : bytes ? UnsignedByteType : HalfFloatType,
     format: RGBAFormat,
     minFilter: kind === 'color' ? LinearMipmapLinearFilter : kind === 'float' ? NearestFilter : LinearFilter,
     magFilter: kind === 'float' ? NearestFilter : LinearFilter,
@@ -43,6 +45,10 @@ class Bake {
   /** The last pass holds the finished texture. */
   get target() {
     return this.passes[this.passes.length - 1].target;
+  }
+
+  targetOf(pass: number) {
+    return this.passes[pass].target;
   }
 
   /** Share of this bake's strips already drawn, 0 → 1. */
@@ -77,7 +83,7 @@ class Bake {
       this.done = true;
       this.pass = 0;
       // the float intermediates are only needed while baking; free them until the next reseed
-      this.passes.slice(0, -1).forEach((q) => q.target.dispose());
+      this.passes.slice(0, -1).forEach((q) => q.keep || q.target.dispose());
     }
   }
 
@@ -127,15 +133,14 @@ export class WorldBaker {
       { material: createSkyBake(u.sky), target: makeTarget(2048, 1024, 'color-nomip'), strips: 4 },
     ]);
 
-    // two passes each: the expensive noise once into float32, then a cheap pass that derives slopes from neighbours
+    // the expensive noise once into float32, then a cheap pass that derives slopes from neighbours, then the ground's colour
+    const detail = size >= 4096 ? 2 : size >= 2048 ? 1 : 0; // extra octaves the larger textures can hold
     const heights = makeTarget(size, size / 2, 'float');
+    const relief = makeTarget(size, size / 2, 'color');
     this.planet = new Bake(renderer, [
-      { material: createTerrainHeightBake(u.terrain), target: heights, strips: size >= 4096 ? 32 : 16 },
-      {
-        material: createSlopePass(heights.texture, size, size / 2, terrainMoisture(u.terrain)),
-        target: makeTarget(size, size / 2, 'color'),
-        strips: 8,
-      },
+      { material: createTerrainHeightBake(u.terrain, detail), target: heights, strips: size >= 4096 ? 32 : 16 },
+      { material: createSlopePass(heights.texture, size, size / 2, terrainGlow(u)), target: relief, strips: 8, keep: true },
+      { material: createAlbedoBake(u, relief.texture, detail), target: makeTarget(size, size / 2, 'color', true), strips: size >= 4096 ? 16 : 8 },
     ]);
     const density = makeTarget(cloudSize, cloudSize / 2, 'float');
     this.clouds = new Bake(renderer, [

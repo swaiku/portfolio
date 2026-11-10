@@ -1,8 +1,11 @@
-import { Fn, If, abs, atan, clamp, cross, dot, exp, float, length, cos, max, mix, normalize, positionLocal, pow, sin, smoothstep, vec3, vec4 } from 'three/tsl';
+import {
+  Fn, If, abs, atan, clamp, cross, dFdx, dFdy, dot, exp, float, length, cos, max, mix, mx_worley_noise_vec2, normalize, positionLocal, pow, sin,
+  smoothstep, sqrt, vec3, vec4,
+} from 'three/tsl';
 import type { Node } from 'three/webgpu';
 import { CustomBlending, NodeMaterial, OneFactor, OneMinusSrcColorFactor } from 'three/webgpu';
 import type { Uniforms } from '../uniforms';
-import { fbm, rampColor, tonemap } from './common';
+import { fbm, rampColor, sq, tonemap } from './common';
 
 export const CORONA_RADIUS = 2.6;
 
@@ -31,11 +34,17 @@ export const createStarMaterial = (u: Uniforms, o: StarOpts = {}) => {
     const t = u.clock.mul(u.activity.mul(0.5).add(0.25));
 
     const warp = vec3(
-      fbm(d.mul(3).add(vec3(0, t.mul(0.12), 0)), 3),
-      fbm(d.mul(3).add(vec3(5, 5, 5)).add(vec3(t.mul(0.1), 0, 0)), 3),
-      fbm(d.mul(3).add(vec3(9, 9, 9)), 3),
+      fbm(d.mul(3).add(vec3(0, t.mul(0.12), 0)), 2),
+      fbm(d.mul(3).add(vec3(5, 5, 5)).add(vec3(t.mul(0.1), 0, 0)), 2),
+      fbm(d.mul(3).add(vec3(9, 9, 9)), 2),
     );
-    const granulation = fbm(d.mul(13).add(warp.mul(0.9)).add(vec3(0, 0, t.mul(0.2))), 5);
+    // the photosphere boils in cells: bright where hot gas wells up, dark in the lanes where it sinks back. The cells sit
+    // on top of broader, slower patches; where a cell would be smaller than a pixel it fades out instead of shimmering
+    const cellFade = smoothstep(0.014, 0.005, max(length(dFdx(N0)), length(dFdy(N0))));
+    const near = mx_worley_noise_vec2(d.mul(34).add(warp.mul(1.5)).add(vec3(0, 0, t.mul(0.25))));
+    const f1 = sqrt(near.x);
+    const cells = smoothstep(0.02, 0.24, sqrt(near.y).sub(f1)).mul(float(1).sub(f1.mul(0.6))).sub(0.55).mul(cellFade);
+    const granulation = fbm(d.mul(13).add(warp.mul(0.9)).add(vec3(0, 0, t.mul(0.2))), 3).mul(0.85).add(cells.mul(0.24));
     const spots = smoothstep(0.1, 0.34, fbm(d.mul(2.3).add(vec3(2, 2, 2)).add(vec3(t.mul(0.02), 0, 0)), 3)).mul(u.activity).mul(0.3);
     const storm = pow(smoothstep(0.35, 0.8, fbm(d.mul(4.5).add(vec3(t.mul(0.35), 0, 3)), 4).mul(1.4)), 2).mul(u.activity).mul(u.storms.mul(2.2).add(1));
 
@@ -124,40 +133,45 @@ export const createCoronaMaterial = (u: Uniforms, o: CoronaOpts = {}) => {
       occ.assign(front.add(hit.sub(front).mul(0.9)));
     }
 
-    // solar storm: a pair of nested loops that rise from the footpoint and swell, then a shock front of plasma thrown outward
+    // solar storm, in the order a real one runs. A prominence, an arch of plasma held up by the magnetic field and made of
+    // fine threads, rises slowly from two footpoints on the limb. It loses its hold and erupts: the arch stretches outward
+    // and tears, and a coronal mass ejection leaves ahead of it, a bubble with a bright front, a dark cavity and the torn
+    // plasma as its core. Behind, a row of small bright loops closes over the wound and fades
     const flareI = float(0).toVar();
     if (o.flares !== false) {
       If(u.flare.greaterThan(0.002), () => {
         const fp = u.flareProg;
-        const phi = length(dir.sub(u.flareDir));
         const amt = u.flareAmt.mul(u.flareSize);
-        const grow = smoothstep(0, 0.45, fp);
-        const h = mix(0.15, 0.9, grow).mul(amt);
-        const half = mix(0.13, 0.36, grow);
-        const x = clamp(phi.div(half), 0, 1);
-        // ragged edge for the loops, and streaks stretched along the height and advected upward, so the plasma licks like flames
-        const rag = fbm(vec3(phi.mul(12), out.mul(7).sub(fp.mul(4)), t.mul(0.35)), 3);
-        const lick = fbm(vec3(phi.mul(18), out.mul(2.2).sub(fp.mul(3)), t.mul(0.5)), 3);
-        const loop = (k: number) => {
-          const xk = clamp(x.mul(k), 0, 1);
-          const arch = h.div(k).mul(pow(float(1).sub(xk.mul(xk)), 0.7));
-          const d = out.sub(arch).add(rag.mul(0.32)).div(float(0.03).add(fp.mul(0.025)));
-          return exp(d.mul(d).negate()).mul(smoothstep(1.0, 0.85, x.mul(k)));
-        };
-        const loops = loop(1).add(loop(1.45).mul(0.7)).mul(clamp(rag.mul(1.8).add(1), 0.1, 2)).mul(2.2);
-        // tongues of fire licking up from the footpoints, thinning out toward the crest
-        const reach = h.mul(1.15).add(0.12);
-        const tongues = smoothstep(0.02, 0.45, lick.mul(1.7).add(0.22))
-          .mul(exp(pow(phi.div(half.mul(1.1).add(out.mul(0.3))), 2).negate()))
-          .mul(pow(float(1).sub(smoothstep(0, reach, out)), 1.3)).mul(smoothstep(0, 0.04, out)).mul(2.6);
-        const under = exp(out.mul(-3.5)).mul(exp(pow(phi.div(half.mul(1.1)), 2).negate())).mul(0.3);
-        // ejecta: clumps of plasma thrown outward, ragged rather than a clean ring
-        const front = fp.sub(0.15).mul(2);
-        const clumps = smoothstep(0.1, 0.55, fbm(vec3(phi.mul(5), out.sub(front).mul(3.2), t.mul(0.25)), 3).mul(1.5).add(0.3));
-        const shell = clumps.mul(exp(pow(out.sub(front).div(0.5), 2).negate())).mul(exp(pow(phi.div(0.55), 2).negate()))
-          .mul(smoothstep(0.15, 0.3, fp)).mul(float(1).sub(smoothstep(0.5, 1, fp))).mul(amt).mul(0.3);
-        const burst = exp(fp.mul(-7)).mul(exp(out.mul(-2.2))).mul(exp(pow(phi.div(0.35), 2).negate())).mul(0.7);
-        flareI.assign(float(1).sub(exp(loops.add(tongues).add(under).add(shell).add(burst).mul(u.flare).negate())).mul(smoothstep(0, 0.1, out)));
+        // the plane of the sky round the footpoint: X along the limb, Y straight up from it, both in star radii
+        const X = b.mul(dot(dir, normalize(cross(normalize(ro), u.flareDir)))).toVar();
+        const Y = b.mul(dot(dir, u.flareDir)).sub(1).toVar();
+        const erupt = sq(smoothstep(0.25, 0.75, fp)).toVar();
+        const H = amt.mul(smoothstep(0, 0.3, fp).mul(0.22).add(0.1).add(erupt.mul(1.5)));
+        const W = amt.mul(0.12).add(0.1).add(erupt.mul(0.08)).toVar();
+        const ex = X.div(W);
+        const ey = Y.div(H);
+        const e = sqrt(sq(ex).add(sq(ey))).sub(1).toVar(); // 0 on the arch, negative under it
+        const a = atan(ey, ex).toVar();
+        const threads = fbm(vec3(a.mul(2.5), e.mul(16), t.mul(0.3)), 3).mul(1.8).add(0.75).clamp(0.05, 2);
+        // plasma draining back down the field lines: coronal rain
+        const rain = fbm(vec3(X.mul(22), Y.mul(5).add(t.mul(0.9)), 2), 2).mul(1.6).add(0.8).clamp(0.2, 1.8).toVar();
+        const arch = exp(sq(e.div(erupt.mul(0.1).add(0.09))).negate()).mul(threads).mul(rain).mul(float(1).sub(smoothstep(0.5, 0.85, fp))).mul(2.4);
+        const sheet = smoothstep(0.1, -0.5, e).mul(rain).mul(float(1).sub(erupt)).mul(0.25);
+
+        const go = smoothstep(0.28, 1, fp).toVar();
+        const reach = pow(go, 0.8).mul(amt.mul(0.9).add(0.5));
+        const rho = reach.mul(0.55).add(0.02).toVar();
+        const rise = Y.sub(reach.sub(rho));
+        const dC = sqrt(sq(X).add(sq(rise))).toVar();
+        const ragged = fbm(vec3(a.mul(3), reach.mul(2), t.mul(0.2)), 3).mul(1.4).add(0.8).clamp(0.2, 1.6).toVar();
+        const leaving = smoothstep(0, 0.1, go).mul(float(1).sub(smoothstep(0.7, 1, fp)));
+        const front = exp(sq(dC.sub(rho).div(rho.mul(0.16).add(0.02))).negate()).mul(smoothstep(-0.4, 0.3, rise.div(rho))).mul(ragged).mul(leaving).mul(0.55);
+        const lump = exp(sq(dC.div(rho.mul(0.3))).negate()).mul(ragged).mul(leaving).mul(0.4);
+
+        const arcade = exp(sq(X.div(W.mul(1.1))).negate()).mul(exp(Y.max(0).mul(-16))).mul(cos(X.mul(80)).mul(0.35).add(0.65)).mul(smoothstep(0.25, 0.4, fp)).mul(1.4);
+        const burst = exp(fp.mul(-10)).mul(exp(sq(X).add(sq(Y)).div(-0.03))).mul(1.5);
+        flareI.assign(float(1).sub(exp(arch.add(sheet).add(front).add(lump).add(arcade).add(burst).mul(smoothstep(-0.02, 0.05, Y)).mul(u.flare).negate()))
+          .mul(smoothstep(0, 0.03, out)));
       });
     }
 

@@ -16,6 +16,11 @@ export const CLASSES: Record<string, string> = {
   hole: 'Past the event horizon, nothing, light included, climbs back out.',
   titan: 'Rings sit inside the Roche limit, where tides tear apart anything trying to become a moon.',
   'twin-pulsar': 'Two pulsars in orbit shed gravitational waves and slowly spiral together.',
+  crater: 'With no air or weather to wear them down, craters last for billions of years.',
+  ocean: 'An ocean world has no shore: its sea can run hundreds of kilometres deep.',
+  ice: "Under an ice world's shell, tides can keep an ocean liquid, as on Europa.",
+  shroud: 'Venus hides under clouds of sulfuric acid; only radar sees its ground.',
+  galaxy: 'A spiral arm is a wave of crowding that stars pass through, not a fixed set of stars.',
 };
 
 interface Save {

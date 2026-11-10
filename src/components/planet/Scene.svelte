@@ -18,12 +18,13 @@
   import { createCoronaMaterial, createStarMaterial } from '../../lib/planet/tsl/star';
   import { createHoleMaterial } from '../../lib/planet/tsl/hole';
   import { createNebulaMaterial } from '../../lib/planet/tsl/space';
+  import { SUN_DIR } from '../../lib/planet/tsl/common';
   import Globe from './Globe.svelte';
 
   let lockedAt = 0;
   const FOV = 30;
   const CAMERA_Z = 10;
-  const SUN = new Vector3(-0.92, 0.3, 0.18).normalize();
+  const SUN = new Vector3(...SUN_DIR).normalize();
 
   const { renderer, scene, camera, size, advance } = useThrelte();
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -76,7 +77,7 @@
   );
 
   const materials = {
-    planet: createPlanetMaterial(u, baker.planet.target.texture, baker.clouds.target.texture),
+    planet: createPlanetMaterial(u, baker.planet.targetOf(1).texture, baker.planet.target.texture, baker.clouds.target.texture),
     clouds: createCloudMaterial(u, baker.clouds.target.texture),
     atmosphere: createAtmosphereMaterial(u, baker.optics.target.texture),
     ring: createRingMaterial(u),

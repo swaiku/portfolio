@@ -1,4 +1,4 @@
-import { COMET_PALETTES, mulberry, NEBULA_SHAPES, type World } from './archetypes';
+import { COMET_PALETTES, GALAXY_SHAPE, mulberry, NEBULA_SHAPES, type World } from './archetypes';
 
 export interface Fact { k: string; v: string }
 
@@ -19,12 +19,15 @@ const ROCK: Record<string, Rock> = {
   rust: { density: [3.8, 5], atmo: 'CO₂ · N₂ · Ar', bar: [0.05, 0.8], ores: ['Hematite', 'Iron', 'Manganese'] },
   obsidian: { density: [3.4, 4.8], atmo: 'CO₂ · SO₂', bar: [0.5, 5], ores: ['Silica glass', 'Titanium', 'Tungsten'] },
   cinder: { density: [4.8, 5.7], atmo: '', bar: [0, 0], ores: ['Graphite', 'Iron', 'Platinum group'] },
-  pelagic: { density: [2.8, 4], atmo: 'N₂ · O₂ · H₂O', bar: [1, 5], ores: ['Water', 'Deuterium', 'Magnesium salts'] },
+  abyss: { density: [2.2, 3.6], atmo: 'N₂ · O₂ · H₂O', bar: [0.8, 4], ores: ['Deuterium', 'Sea salts', 'Manganese nodules'] },
+  glacier: { density: [1.6, 3], atmo: 'N₂ · CH₄', bar: [0.001, 0.3], ores: ['Water ice', 'Nitrogen ice', 'Ammonia ice'] },
+  regolith: { density: [3.2, 5.4], atmo: '', bar: [0, 0], ores: ['Helium-3', 'Ilmenite', 'Anorthosite'] },
+  veil: { density: [4.6, 5.5], atmo: 'CO₂ · N₂ · H₂SO₄', bar: [40, 110], ores: ['Sulfuric acid', 'Basalt', 'Carbon dioxide'] },
 };
 
 /** How well each ground template could host life before pressure, gravity and water are weighed in. */
 const HABITABLE: Record<string, number> = {
-  verdigris: 0.85, orchid: 0.8, saltglass: 0.45, frostbloom: 0.3, cobalt: 0.25, rust: 0.2, sulfur: 0.12, obsidian: 0.03, ember: 0.02, cinder: 0, pelagic: 0.7,
+  verdigris: 0.85, orchid: 0.8, saltglass: 0.45, frostbloom: 0.3, cobalt: 0.25, rust: 0.2, sulfur: 0.12, obsidian: 0.03, ember: 0.02, cinder: 0, abyss: 0.9, glacier: 0.15, regolith: 0, veil: 0.01,
 };
 
 const bell = (x: number, mid: number, width: number) => Math.exp(-(((x - mid) / width) ** 2));
@@ -128,10 +131,20 @@ export function describe(w: World): Fact[] {
     add('Mass', `${power(10 ** lerp(r(), [12, 15.5]))} kg`);
     add('Composition', 'H₂O ice · CO₂ · dust');
     add('Coma', COMET_PALETTES[w.comet.palette].name);
+    const c = w.comet;
+    const marks = [c.fragments ? `nucleus broken in ${c.fragments + 1}` : '', c.striae ? 'striated dust tail' : '', c.sodium ? 'sodium tail' : '', c.anti ? 'anti-tail' : '', c.shells ? 'shells round the head' : ''].filter(Boolean);
+    if (marks.length) add('Features', marks.join(', '));
     add('Life', life(0.008, r)); // prebiotic chemistry at best
     add('Main resource', 'Water ice');
+  } else if (w.nebula === GALAXY_SHAPE) {
+    add('Type', 'Spiral galaxy');
+    add('Stars', power(10 ** lerp(r(), [9.5, 11.8])));
+    add('Diameter', `${group(lerp(r(), [30, 180]) * 1000)} light-years`);
+    add('Distance', `${lerp(r(), [2, 90]).toFixed(1)} million light-years`);
   } else {
     add('Shape', NEBULA_SHAPES[w.nebula]);
+    add('Width', `${lerp(r(), [1, 120]).toFixed(1)} light-years`);
+    add('Gas', 'Hydrogen · helium · dust');
   }
   add('Seed', w.seed.toString(16).toUpperCase().padStart(6, '0'));
   return facts;

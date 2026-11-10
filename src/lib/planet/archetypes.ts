@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { type Tone, type Archetype, ARCHETYPES, type Template, STARS, HOLES, NEBULAE, COMETS, NEBULA_SHAPES, type Kind, type ObjectType, TYPES } from './catalog';
+import { type Tone, type Archetype, ARCHETYPES, type Template, STARS, HOLES, NEBULAE, COMETS, NEBULA_SHAPES, GALAXY_SHAPE, type Kind, type ObjectType, TYPES } from './catalog';
 
 export * from './catalog';
 
@@ -83,6 +83,12 @@ export interface Comet {
   curve: number; // how far the dust tail bends; the sign picks the side
   head: number; // size of the coma
   seed: number;
+  striae: number; // bands fanned across the dust tail, as on the great comets; 0 for none
+  anti: number; // a short spike pointing at the sun
+  shells: number; // hoods of gas round the head, thrown off as the nucleus turns
+  sodium: number; // a third, thin amber tail
+  fragments: number; // pieces of a broken nucleus trailing the head, 0 to 3
+  gap: number; // how far apart the fragments ride
 }
 
 /** Head colour (the glow of the coma's gas) and the colour the ion tail fades into. */
@@ -91,6 +97,9 @@ export const COMET_PALETTES = [
   { name: 'cyan', head: [0.1, 0.65, 1], tip: [0.2, 0.3, 1] },
   { name: 'violet', head: [0.55, 0.4, 1], tip: [0.5, 0.2, 0.95] },
   { name: 'sodium amber', head: [1, 0.55, 0.12], tip: [0.3, 0.45, 1] },
+  { name: 'ice white', head: [0.75, 0.9, 1], tip: [0.35, 0.6, 1] },
+  { name: 'rose', head: [1, 0.35, 0.55], tip: [0.6, 0.3, 1] },
+  { name: 'gold', head: [1, 0.8, 0.3], tip: [1, 0.45, 0.2] },
 ] as const;
 
 /** How far this world strays from its template's terrain, so two worlds of one class do not share a character. */
@@ -157,16 +166,27 @@ const pulsarPeriod = (klass: number, spread: number) =>
 export interface RollArgs { seed: number; kind?: string; avoid?: string; hue?: number; boost?: Record<string, number> }
 
 export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?: number, boost?: Record<string, number>): World {
-  const r = mulberry(seed);
-  const weighted = (list: ObjectType[]) => {
-    const w = (t: ObjectType) => t.weight * (boost?.[t.id] ?? 1);
-    let k = r() * list.reduce((n, t) => n + w(t), 0);
+  const w = (t: ObjectType) => t.weight * (boost?.[t.id] ?? 1);
+  const draw = (list: ObjectType[], rnd: () => number) => {
+    let k = rnd() * list.reduce((n, t) => n + w(t), 0);
     return list.find((t) => (k -= w(t)) < 0) ?? list[list.length - 1];
   };
+  // The classes added after launch are drawn first, on a stream of their own: with their share of the odds the roll goes to
+  // one of them, otherwise it carries on exactly as it always did. So a seed that gave an older class still gives the same world.
+  if (!kind) {
+    const late = TYPES.filter((t) => t.late);
+    const r2 = mulberry((seed ^ 0x51ed270b) >>> 0);
+    const share = late.reduce((n, t) => n + w(t), 0) / TYPES.reduce((n, t) => n + w(t), 0);
+    if (r2() < share) return rollWorld(seed, draw(late, r2).id, avoid, avoidHue, boost);
+  }
+  const r = mulberry(seed);
+  const weighted = (list: ObjectType[]) => draw(list, r);
   const forcedTpl = kind ? TEMPLATES.find((t) => t.id === kind) : undefined;
+  const early = TYPES.filter((t) => !t.late);
+  const sameFamily = TYPES.filter((t) => t.family === kind);
   const type = TYPES.find((t) => t.id === kind)
     ?? (forcedTpl ? TYPES.find((t) => t.pool.includes(forcedTpl.id)) : undefined)
-    ?? weighted(TYPES.filter((t) => !kind || t.family === kind).length ? TYPES.filter((t) => !kind || t.family === kind) : TYPES);
+    ?? weighted(!kind ? early : sameFamily.some((t) => !t.late) ? sameFamily.filter((t) => !t.late) : sameFamily.length ? sameFamily : early);
   const family = type.family;
 
   let candidates = type.pool;
@@ -209,7 +229,7 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
   const beamTilt = 0.45 + r() * 0.7;
   // log-uniform inside each class: a few millisecond pulsars (fastest known, PSR J1748-2446ad: 1.4 ms), mostly ordinary
   // ones around a second, and the odd very slow one (slowest known, PSR J0901-4046: 75.9 s)
-  const nebula = Math.floor(r() * NEBULA_SHAPES.length);
+  const nebula = tpl.id === 'galaxy' ? (r(), GALAXY_SHAPE) : Math.floor(r() * NEBULA_SHAPES.length);
   const klass = r();
   const spread = r();
   const period = pulsarPeriod(klass, spread);
@@ -307,6 +327,7 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
     curve: (r() < 0.5 ? -1 : 1) * (0.3 + r() * 1.5),
     head: 0.7 + r() * 0.7,
     seed: r() * 100,
+    striae: 0, anti: 0, shells: 0, sodium: 0, fragments: 0, gap: 0.7,
   };
   // rolled last, and only for beam stars, so no other seed moves: one in six is a fancy pulsar in a colour no star has
   if (type.jets && r() < 1 / 6) {
@@ -315,6 +336,13 @@ export function rollWorld(seed: number, kind?: string, avoid?: string, avoidHue?
     sat = 0;
     accent = hsl(h, 0.75, 0.62);
   }
+  // rolled after everything else again, so no seed moves: what sets one comet apart from the next
+  const some = (chance: number, lo: number, hi: number) => (r() < chance ? lo + r() * (hi - lo) : 0);
+  Object.assign(comet, {
+    striae: some(0.35, 0.5, 1), anti: some(0.25, 0.5, 1), shells: some(0.4, 0.4, 1), sodium: some(0.3, 0.5, 1),
+    fragments: r() < 0.2 ? 1 + Math.floor(r() * 3) : 0, gap: 0.5 + r() * 0.5,
+  });
+  if (r() < 0.3) comet.palette = 4 + Math.floor(r() * 3);
   // the UI accent takes the colour of the comet's head, so the page matches what is on screen
   if (family === 'comet') accent = hsl(new THREE.Color(...COMET_PALETTES[comet.palette].head).getHSL({ h: 0, s: 0, l: 0 }).h, 0.8, 0.62);
   return { seed, name, kind: family, type, tpl, arch, moons, belt, terrainSeed, hue, scheme, sat, drift, ring, tilt, activity, size, companion, nebula, period, spots: type.jets ? 0 : spots, storms: type.jets ? 0 : storms, tempest, beamTilt, accent: legible(accent), temp, light, variance, comet };

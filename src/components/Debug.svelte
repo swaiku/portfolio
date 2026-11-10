@@ -32,24 +32,24 @@
         planet: [
             { title: "Terrain", ctl: [
                 n("freq", T.cfreq, "value", 0.3, 4, 0.01, true), n("amp", T.amp, "value", 0, 0.8, 0.005, true),
-                n("ridge", T.ridge, "value", 0, 1, 0.01, true), n("warp", T.warp, "value", 0, 1.5, 0.01, true),
+                n("ridge", T.ridge, "value", 0, 1, 0.01, true), n("craters", T.crater, "value", 0, 1, 0.01, true), n("warp", T.warp, "value", 0, 1.5, 0.01, true),
                 n("terrace", T.terrace, "value", 0, 12, 1, true), n("dry", T.dry, "value", 0, 1, 1, true),
                 n("bands", T.bands, "value", 0, 14, 1, true), n("swirl", T.swirl, "value", 0, 0.3, 0.005, true),
             ] },
             { title: "Ground", ctl: [
                 ...u.ramp.map((r, i) => c(`ramp ${i}`, r.value, true)),
-                n("strata", u.strata, "value", 0, 0.9, 0.01), n("strata freq", u.strataF, "value", 1, 15, 0.1),
-                n("ice", u.ice, "value", 0, 1, 0.01), c("ice colour", u.iceCol.value), c("sun", u.sunCol.value),
+                n("strata", u.strata, "value", 0, 0.9, 0.01, true), n("strata freq", u.strataF, "value", 1, 15, 0.1, true),
+                n("ice", u.ice, "value", 0, 1, 0.01, true), c("ice colour", u.iceCol.value, true), c("sun", u.sunCol.value),
             ] },
             { title: "Liquid", ctl: [
                 n("present", u.hasLiq, "value", 0, 1, 1), n("sea level", u.sea, "value", -0.5, 1, 0.005),
                 c("deep", u.liqDeep.value), c("shallow", u.liqShallow.value),
             ] },
-            { title: "Gas giant", when: () => u.gas.value > 0.5, ctl: [c("band A", u.gasA.value), c("band B", u.gasB.value)] },
+            { title: "Gas giant", when: () => u.gas.value > 0.5, ctl: [c("band A", u.gasA.value, true), c("band B", u.gasB.value, true)] },
             { title: "Clouds", ctl: [n("amount", u.cloudAmt, "value", 0, 1, 0.01), c("tint", u.cloudTint.value)] },
             { title: "Atmosphere", ctl: [n("scatter", u.scatter, "value", 0, 1.5, 0.01), c("colour", u.atmoCol.value)] },
             { title: "Glow", ctl: [
-                n("amount", u.glowAmt, "value", 0, 4, 0.01), n("mode", u.glowMode, "value", 0, 1, 1),
+                n("amount", u.glowAmt, "value", 0, 4, 0.01), n("mode", u.glowMode, "value", 0, 1, 1, true),
                 n("day", u.glowDay, "value", 0, 1, 0.01), c("colour", u.glowCol.value),
             ] },
             { title: "Ring", when: () => sim.traits.includes("ringed"), ctl: [
