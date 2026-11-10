@@ -43,7 +43,7 @@
   const comet = createCometMaterial(u);
   const cometSheet = new PlaneGeometry(COMET_LENGTH + COMET_HEAD_OVERHANG, COMET_HALF_WIDTH * 2)
     .translate((COMET_LENGTH - COMET_HEAD_OVERHANG) / 2, 0, 0);
-  const nebulaPlane = new PlaneGeometry(3.1 * 1.2, 3.1);
+  const nebulaPlane = new PlaneGeometry(2.6 * 1.2, 2.6);
   let nebulaMesh = $state<Mesh>();
   // fewer stars on a weak device; the sprites are small, so the count is what costs
   const galaxy = new InstancedMesh(new PlaneGeometry(1, 1), createGalaxyMaterial(u), { off: 1, low: 12000, mid: 24000, high: 45000 }[quality.tier]);

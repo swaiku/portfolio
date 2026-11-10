@@ -304,8 +304,29 @@ const SKY_GAIN = 0.5; // a backdrop: it must stay well under the world in the le
 export const NEBULA_ASPECT = 1.2;
 
 /**
- * A nebula as a picture, painted once into a texture. Six shapes share one set of dust filaments and one colouring
- * (outer dust, middle, hot core, a scatter of tiny stars); each shape only decides where the gas is:
+ * Kali's folded fractal, as used in "Simplicity Galaxy" (shadertoy MslGWN): the point is folded and inverted over and
+ * over, and the gas is dense where two folds in a row land at the same distance. That gives thin bright filaments
+ * and knots at every scale, which layered noise never does.
+ */
+const kali = (p0: Node, iterations: number): Node => {
+  const p = p0.toVar();
+  const acc = float(0).toVar();
+  const prev = float(0).toVar();
+  const total = float(0).toVar();
+  Loop(iterations, ({ i }) => {
+    const mag = dot(p, p);
+    p.assign(abs(p).div(mag).add(vec3(-0.5, -0.4, -1.5)));
+    const w = exp(float(i).div(-7));
+    acc.addAssign(w.mul(exp(pow(abs(mag.sub(prev)), 2.2).mul(-7))));
+    total.addAssign(w);
+    prev.assign(mag);
+  });
+  return max(acc.mul(5).div(total).sub(0.7), 0);
+};
+
+/**
+ * A nebula as a picture, painted once into a texture. Six shapes share one gas (a soft mass threaded with fractal
+ * filaments) and one colouring (outer dust, middle, hot core); each shape only decides where the gas is:
  * 0 emission cloud with cavities, 1 planetary shell, 2 supernova bubble, 3 bipolar lobes, 4 pillars, 5 veil of arcs.
  * Shown on a flat quad, so it costs next to nothing per frame however grand it looks.
  */
@@ -326,13 +347,12 @@ export const createNebulaBake = (u: Uniforms) =>
       const qw = q.add(warp.mul(0.75));
       const mass = fbm(vec3(qw.mul(1.5), seed.z), 5).mul(1.8).add(0.45);
 
-      // dust threads: one family fanning out from the centre, one drifting across
-      const sx = vec3(dir.x.mul(5), dir.y.mul(5), r.mul(0.9)).add(seed);
-      const fan = ridge(gnoise(sx).add(gnoise(sx.mul(2.1)).mul(0.5)), 2.4);
-      const sy = vec3(qw.x.mul(10), qw.y.mul(1.3), seed.x.add(2));
-      const drift = ridge(gnoise(sy).add(gnoise(sy.mul(2.3)).mul(0.5)), 2.4);
+      // filaments: two depths of the folded fractal, the far one larger and fainter
+      const at = vec3(sin(seed.x.mul(1.3)), sin(seed.y.mul(2.1)), sin(seed.z.mul(1.7))).mul(0.25);
+      const near = kali(vec3(qw.div(4), 0).add(vec3(1, -1.3, 0)).add(at), 22);
+      const far = kali(vec3(q.div(3), 1.5).add(vec3(2, -1.3, -1)).add(at), 16);
       const arcs = ridge(gnoise(vec3(qw.mul(1.7), seed.z)).add(gnoise(vec3(qw.mul(3.9), seed.y)).mul(0.4)), 2.7);
-      const dens = clamp(mass.mul(0.8).add(fan.mul(0.5)).add(drift.mul(0.3)).sub(0.22), 0, 1.3).toVar();
+      const dens = clamp(mass.mul(0.45).add(near.mul(1.3)).add(far.mul(0.55)).sub(0.2), 0, 1.5).toVar();
 
       const env = float(0).toVar(); // where the gas is
       const core = float(0).toVar(); // a bright star or core at the centre
@@ -395,15 +415,17 @@ export const createNebulaBake = (u: Uniforms) =>
         glow.assign(arcs.mul(0.2));
       });
 
-      const heat = clamp(core.mul(1.3).add(dens.mul(0.4).mul(float(1.3).sub(r))).add(glow), 0, 1.6);
+      const heat = clamp(core.mul(1.3).add(dens.mul(0.4).mul(float(1.3).sub(r))).add(glow).add(near.mul(near).mul(0.2)), 0, 1.6);
       const dust = mix(u.nebA, u.nebB, smoothstep(0.15, 0.6, heat));
       const tint = mix(dust, u.nebC, smoothstep(0.5, 1.05, heat));
       const body = dens.mul(env);
       let col = tint.mul(body.mul(heat.mul(1.3).add(0.55)));
       col = col.add(u.nebC.mul(core).mul(1.6)).add(vec3(1, 1, 1).mul(pow(core, 3)).mul(1.1));
 
-      const star = pow(clamp(gnoise(vec3(q.mul(170), seed.x)).mul(1.7), 0, 1), 14).mul(2);
-      col = col.add(mix(u.nebC, vec3(1, 1, 1), 0.5).mul(star).mul(float(1).sub(clamp(body, 0, 1).mul(0.6))));
+      col = col.add(u.nebC.mul(near.mul(near)).mul(env).mul(0.5)); // the brightest threads glow in the hot colour
+      // the picture fades out before the quad's edge, so the quad itself never shows; its stars are the dome's
+      const edge = smoothstep(1, 0.72, abs(uvn.x.sub(0.5).mul(2))).mul(smoothstep(1, 0.72, abs(uvn.y.sub(0.5).mul(2))));
+      col = col.mul(edge);
       return vec4(col, 1);
     })(),
   );
