@@ -1,6 +1,6 @@
 import {
-  Break, Fn, If, Loop, atan, clamp, cos, cross, dFdx, dFdy, dot, exp, float, fwidth, length, max, mix, normalize, positionLocal,
-  pow, sin, smoothstep, sqrt, vec3, vec4,
+  Break, Fn, If, Loop, atan, clamp, cos, cross, dFdx, dFdy, dot, exp, float, fract, fwidth, length, max, mix, normalize, positionLocal,
+  pow, screenCoordinate, sin, smoothstep, sqrt, vec2, vec3, vec4,
 } from 'three/tsl';
 import { NodeMaterial } from 'three/webgpu';
 import type { Texture } from 'three/webgpu';
@@ -33,7 +33,9 @@ export const createHoleMaterial = (u: Uniforms, skyTex: Texture) => {
     const aa = fwidth(impact); // derivatives before any branch
     const footprint = max(length(dFdx(v0)), length(dFdy(v0)));
 
-    const p = p0.toVar();
+    // each pixel starts its march a different fraction of a step in: the steps would otherwise show as hatching in the gas
+    const jitter = fract(fract(dot(screenCoordinate, vec2(0.06711056, 0.00583715))).mul(52.9829189));
+    const p = p0.add(v0.mul(jitter.mul(0.035))).toVar();
     const v = v0.toVar();
     const emission = vec3(0).toVar();
     const transmit = float(1).toVar();
@@ -55,7 +57,13 @@ export const createHoleMaterial = (u: Uniforms, skyTex: Texture) => {
       const hazeHeat = pow(float(1).sub(rho.sub(h.diskIn).div(h.diskOut.sub(h.diskIn)).clamp(0, 1)), 1.4).mul(0.8);
       const hv = normalize(vec3(p.z.negate(), 0, p.x));
       const hg = float(1).div(float(1).sub(float(HORIZON / 2).div(rho.sub(HORIZON).max(0.01)).sqrt().mul(h.doppler).mul(dot(hv, v.negate())).min(0.85)));
-      emission.addAssign(transmit.mul(slab).mul(span).mul(rampColor(u.ramp, hazeHeat.mul(hg))).mul(pow(hg, 2.5)).mul(ds.mul(h.exposure).mul(3.4)));
+      // the gas is not a smooth fog: it is combed into streaks by the same shear as the disk (skipped where there is no gas)
+      const comb = float(1).toVar();
+      If(slab.mul(span).greaterThan(0.02), () => {
+        const hphi = atan(p.z, p.x).sub(u.clock.mul(1.1).div(pow(rho.div(h.diskIn).max(0.5), 1.5)));
+        comb.assign(fbm(vec3(rho.mul(16), cos(hphi).mul(2.4), sin(hphi).mul(2.4)), 2).mul(1.5).add(0.75).clamp(0.15, 1.8));
+      });
+      emission.addAssign(transmit.mul(slab).mul(span).mul(comb).mul(rampColor(u.ramp, hazeHeat.mul(hg))).mul(pow(hg, 2.5)).mul(ds.mul(h.exposure).mul(2.8)));
 
       If(p.y.mul(next.y).lessThan(0), () => {
         const hit = mix(p, next, p.y.div(p.y.sub(next.y)));
@@ -68,7 +76,7 @@ export const createHoleMaterial = (u: Uniforms, skyTex: Texture) => {
           const clump = fbm(vec3(rr.mul(18), cos(phi).mul(3), sin(phi).mul(3)), 2).add(0.5);
           // razor inner edge at the innermost stable orbit, long soft fade outward
           const edge = smoothstep(0, 0.07, k).mul(smoothstep(1, 0.3, k));
-          const density = edge.mul(streak.mul(1.0).add(0.2)).mul(clump.mul(0.9).add(0.45)).clamp(0, 1);
+          const density = edge.mul(streak.mul(1.5).sub(0.1)).mul(clump.mul(1.1).add(0.3)).clamp(0, 1);
 
           // relativistic Doppler g = 1 / (γ (1 − β cos θ)), orbital β from Kepler; `doppler` tames it toward art
           const beta = sqrt(float(HORIZON / 2).div(rr.sub(HORIZON))).mul(h.doppler).min(0.9);
@@ -80,8 +88,10 @@ export const createHoleMaterial = (u: Uniforms, skyTex: Texture) => {
           // hottest just outside the inner edge; beaming shifts the colour as well as the brightness
           const temp = pow(float(1).sub(k), 1.6).mul(smoothstep(0, 0.08, k).mul(0.25).add(0.75));
           const heat = temp.mul(g).mul(redshift).mul(1.2).add(0.32).add(streak.sub(0.5).mul(0.1));
-          const intensity = pow(g, 3).mul(temp.mul(11).add(2));
-          emission.addAssign(transmit.mul(density).mul(rampColor(u.ramp, heat)).mul(intensity).mul(h.exposure));
+          const intensity = pow(g, 3).mul(temp.mul(7).add(1.4));
+          // white-hot only at the inner edge: the rest keeps its colour, so the streaks stay readable instead of burning out
+          const glowing = rampColor(u.ramp, heat).add(vec3(1, 0.96, 0.9).mul(pow(temp, 5)).mul(0.8));
+          emission.addAssign(transmit.mul(density).mul(glowing).mul(intensity).mul(h.exposure));
           transmit.mulAssign(float(1).sub(density.mul(0.55)));
         });
       });
