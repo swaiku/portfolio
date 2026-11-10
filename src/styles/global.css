@@ -123,7 +123,7 @@ html.focus .planet-host canvas {
 /* a landscape lens: wide across the top, the working tiles in a band beneath it */
 .t-id { grid-column: 1 / 4; grid-row: 1 / 3; justify-content: space-between; gap: 14px; }
 .t-missions { grid-column: 1 / 4; grid-row: 3 / 6; }
-.t-leave { grid-column: 1 / 4; grid-row: 6 / 7; justify-content: center; }
+.t-leave { grid-column: 1 / 4; grid-row: 6 / 7; justify-content: center; padding-block: 12px; } /* less padding: the patch takes the height */
 .lens { grid-column: 4 / 13; grid-row: 1 / 5; position: relative; }
 .t-payload { grid-column: 4 / 8; grid-row: 5 / 7; }
 .t-plan { grid-column: 8 / 11; grid-row: 5 / 7; }
@@ -169,7 +169,7 @@ html.focus .planet-host canvas {
 :is(.craft, .cap).on { display: block; }
 /* the probe's name sits under its drawing */
 .bay .craft { height: calc(100% - 26px); }
-.bay .cap { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; white-space: nowrap; }
+.bay .cap { position: absolute; left: 0; bottom: 0; white-space: nowrap; } /* from the left edge: a long name runs into the gutter, not the list */
 @media (prefers-reduced-motion: no-preference) {
   .bay .craft { animation: plot-x 1.6s var(--ease-out-expo) 0.3s both; }
   .ascent .craft { animation: plot-y 1.8s var(--ease-out-expo) 0.3s both; }
@@ -196,7 +196,7 @@ html.focus .planet-host canvas {
 .plan .now .k { color: var(--color-amber); }
 
 /* shore leave: a crew patch per pastime; the row of emblems picks which one is on the table */
-.patches { display: grid; grid-template-columns: clamp(76px, 26%, 92px) minmax(0, 1fr); gap: 0 clamp(12px, 1.4vw, 20px); align-items: center; }
+.patches { display: grid; grid-template-columns: clamp(80px, 35%, 106px) minmax(0, 1fr); gap: 0 clamp(12px, 1.4vw, 20px); align-items: center; }
 .stage { position: relative; aspect-ratio: 1; }
 .slot { position: absolute; inset: 0; display: none; }
 .slot.on { display: block; }
@@ -221,7 +221,7 @@ html.focus .planet-host canvas {
 .line span.on { display: inline; }
 .line b { font-weight: 500; color: var(--color-ink); }
 .emblems { display: flex; flex-wrap: wrap; gap: 3px; }
-.emblems button { width: 24px; height: 24px; padding: 4px; border: 1px solid var(--color-rule); border-radius: 50%; background: none; color: var(--color-dim); cursor: pointer; }
+.emblems button { width: 22px; height: 22px; padding: 3.5px; border: 1px solid var(--color-rule); border-radius: 50%; background: none; color: var(--color-dim); cursor: pointer; }
 .emblems svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .emblems button.on { color: var(--color-amber); border-color: var(--color-amber); }
 

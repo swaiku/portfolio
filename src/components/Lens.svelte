@@ -182,11 +182,10 @@
   .tear { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; opacity: 0; pointer-events: none; transition: opacity 0.4s; }
   .tear.on { opacity: 1; transition: none; }
 
-  /* the frame: a hairline 18px in, broken by its own labels; the picture darkens a little under the two label rows */
+  /* the frame: a hairline 18px in, broken by its own labels; a dark halo keeps them readable over a bright world */
   .hud {
     --line: rgb(236 239 251 / 0.3);
     position: absolute; inset: 0; container-type: inline-size;
-    background: linear-gradient(rgb(4 5 11 / 0.55), transparent 70px), linear-gradient(to top, rgb(4 5 11 / 0.65), transparent 130px);
     text-shadow: 0 0 8px var(--color-space), 0 0 2px var(--color-space);
   }
   .hud::before, .hud::after { content: ''; position: absolute; top: 18px; bottom: 18px; width: 1px; background: var(--line); }
