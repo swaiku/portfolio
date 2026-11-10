@@ -4,7 +4,7 @@ import Lens from '../components/Lens.svelte';
 import Atlas from '../components/Atlas.svelte';
 import Patch from '../components/Patch.astro';
 import { icons } from '../data/icons';
-import { site, flightPlan, missions, instruments, alsoAboard, offDuty } from '../data/site';
+import { site, flightPlan, missions, tools, offDuty } from '../data/site';
 import { launchers, probes } from '../data/crafts';
 
 const craft = (file: string) => `${import.meta.env.BASE_URL.replace(/\/$/, '')}/crafts/${file}`;
@@ -12,7 +12,7 @@ const craft = (file: string) => `${import.meta.env.BASE_URL.replace(/\/$/, '')}/
 const featured = missions.filter((m) => m.line);
 const others = missions.filter((m) => !m.line);
 // Eurobot already flies under Missions; the plan keeps the four latest steps
-const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
+const [now, ...flown] = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
 ---
 
 <Base
@@ -59,31 +59,27 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
 
     <section id="payload" class="tile t-payload" aria-labelledby="payload-h">
       <span class="k no" aria-hidden="true">02</span>
-      <h2 id="payload-h" class="k hi">Payload <span class="k">· flown on</span></h2>
+      <h2 id="payload-h" class="k hi">Payload</h2>
       <div class="bay" data-crafts>
         <div class="fig" aria-hidden="true">
           {probes.map((c, n) => (<img class:list={['craft', { on: !n }]} data-i={n} src={craft(c.file)} alt="" loading="lazy" decoding="async" />))}
           {probes.map((c, n) => (<span class:list={['k cap', { on: !n }]} data-i={n}>{c.name} · {c.note}</span>))}
         </div>
-        <dl class="instruments">
-          {instruments.map((i) => (<><dt>{i.tools}</dt><dd class="k">{i.flew}</dd></>))}
-        </dl>
+        <ul class="tags">{tools.map((t) => <li>{t}</li>)}</ul>
       </div>
-      <p class="also"><span class="k">Also aboard</span> {alsoAboard.join(', ')}</p>
     </section>
 
     <section class="tile t-plan" aria-labelledby="plan-h">
       <span class="k no" aria-hidden="true">03</span>
       <h2 id="plan-h" class="k hi">Flight plan</h2>
       <div class="ascent" data-crafts>
+        <div class="plan">
+          <p class="next"><span class="k">Now</span><b>{now.title}</b><small>{now.where}</small></p>
+          <ol>{flown.map((s) => (<li><span>{s.title}</span><small>{s.where}</small></li>))}</ol>
+        </div>
         <div class="fig" aria-hidden="true">
           {launchers.map((c, n) => (<img class:list={['craft', { on: !n }]} data-i={n} src={craft(c.file)} alt="" loading="lazy" decoding="async" />))}
         </div>
-        <ol class="plan">
-          {plan.map((s) => (
-            <li class:list={{ now: s.phase === 'now' }}><span class="pin" aria-hidden="true"></span><span>{s.title}</span><span class="k">{s.phase}</span></li>
-          ))}
-        </ol>
         <p class="k cartouche" aria-hidden="true">
           {launchers.map((c, n) => (<span class:list={['cap', { on: !n }]} data-i={n}>{c.name} · {c.note}</span>))}
         </p>

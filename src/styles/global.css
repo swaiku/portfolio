@@ -123,7 +123,7 @@ html.focus .planet-host canvas {
 /* a landscape lens: wide across the top, the working tiles in a band beneath it */
 .t-id { grid-column: 1 / 4; grid-row: 1 / 3; justify-content: space-between; gap: 14px; }
 .t-missions { grid-column: 1 / 4; grid-row: 3 / 6; }
-.t-leave { grid-column: 1 / 4; grid-row: 6 / 7; justify-content: center; padding-block: 12px; } /* less padding: the patch takes the height */
+.t-leave { grid-column: 1 / 4; grid-row: 6 / 7; justify-content: center; padding-block: 8px; } /* less padding: the patch takes the height */
 .lens { grid-column: 4 / 13; grid-row: 1 / 5; position: relative; }
 .t-payload { grid-column: 4 / 8; grid-row: 5 / 7; }
 .t-plan { grid-column: 8 / 11; grid-row: 5 / 7; }
@@ -159,6 +159,10 @@ html.focus .planet-host canvas {
 .also a { color: var(--color-ink); text-decoration: underline; text-decoration-color: rgb(236 239 251 / 0.35); text-underline-offset: 3px; }
 .also a:hover { color: var(--color-amber); }
 
+/* tools as tags */
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.tags li { padding: 1px 8px; border: 1px solid var(--color-rule); border-radius: 6px; background: rgb(236 239 251 / 0.04); font-size: 0.78rem; line-height: 1.5; color: var(--color-ink); white-space: nowrap; }
+
 .t-log p { margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--color-ink-2); }
 
 /* drawing-office sheets: a real spacecraft as a wireframe of its 3D model, one per visit (see data/crafts.ts) */
@@ -177,26 +181,25 @@ html.focus .planet-host canvas {
 @keyframes plot-x { from { clip-path: inset(-10% 110% -10% -10%); } to { clip-path: inset(-10%); } }
 @keyframes plot-y { from { clip-path: inset(110% -10% -10% -10%); } to { clip-path: inset(-10%); } }
 
-/* payload: the craft on the left, what flew on the right */
-.bay { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 0 clamp(12px, 1.4vw, 22px); margin-top: 12px; }
-.instruments { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 12px; margin: 0; align-content: space-evenly; align-items: baseline; }
-.instruments dt { font-size: 0.85rem; line-height: 1.35; color: var(--color-ink); }
-.instruments dd { margin: 0; text-align: right; color: var(--color-amber); }
+/* payload: the craft takes the room, the tools wrap beside it */
+.bay { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 0 clamp(12px, 1.4vw, 22px); margin-top: 10px; }
+.bay .tags { align-content: center; }
 
-/* flight plan: the steps climb a launcher, the current one at the top; a station line runs from each step across it */
-.ascent { --w: 72px; flex: 1; min-height: 0; display: grid; grid-template-columns: var(--w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 0 14px; margin-top: 10px; }
-.ascent .fig { grid-row: 1 / 3; }
+/* flight plan: where I am now in large, the steps already flown under it, the launcher standing beside them */
+.ascent { --w: 80px; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--w); grid-template-rows: minmax(0, 1fr) auto; gap: 0 14px; margin-top: 10px; }
+.ascent .fig { grid-column: 2; grid-row: 1 / 3; }
+.plan { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.plan .next { margin: 0; display: flex; flex-direction: column; gap: 2px; padding-left: 10px; border-left: 2px solid var(--color-amber); }
+/* the steps flown sit on the same rule as the current one, dimmed */
+.plan .next .k { color: var(--color-amber); }
+.plan .next b { font-family: var(--font-display); font-weight: 500; font-size: 1rem; line-height: 1.2; letter-spacing: -0.01em; }
+.plan small { font-size: 0.75rem; line-height: 1.3; color: var(--color-ink-3); }
+.plan ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.plan li { display: flex; flex-direction: column; padding-left: 10px; border-left: 2px solid var(--color-rule); font-size: 0.85rem; line-height: 1.3; }
 .cartouche { padding-top: 6px; border-top: 1px solid var(--color-rule); }
-.plan { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.plan li { position: relative; flex: 1; display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 0 10px; align-items: center; padding: 3px 0; font-size: 0.85rem; line-height: 1.35; }
-.plan li::before { content: ''; position: absolute; right: 100%; top: 50%; width: calc(var(--w) + 14px); border-top: 1px dashed var(--color-dim); opacity: 0.4; }
-.plan .now::before { border-color: var(--color-amber); opacity: 0.9; }
-.plan .pin { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--color-ink-3); }
-.plan .now .pin { background: var(--color-amber); border-color: var(--color-amber); }
-.plan .now .k { color: var(--color-amber); }
 
 /* shore leave: a crew patch per pastime; the row of emblems picks which one is on the table */
-.patches { display: grid; grid-template-columns: clamp(80px, 35%, 106px) minmax(0, 1fr); gap: 0 clamp(12px, 1.4vw, 20px); align-items: center; }
+.patches { display: grid; grid-template-columns: clamp(96px, 13.5vh, 132px) minmax(0, 1fr); gap: 0 clamp(12px, 1.2vw, 16px); align-items: center; }
 .stage { position: relative; aspect-ratio: 1; }
 .slot { position: absolute; inset: 0; display: none; }
 .slot.on { display: block; }
@@ -216,14 +219,19 @@ html.focus .planet-host canvas {
 }
 @keyframes pin { from { transform: rotate(-14deg) scale(0.86); opacity: 0; } }
 .about { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.line { margin: 0; font-size: 0.8rem; line-height: 1.4; color: var(--color-ink-2); min-height: 2.8em; }
+.line { margin: 0; font-size: 0.78rem; line-height: 1.35; color: var(--color-ink-2); min-height: 2.7em; }
 .line span { display: none; }
 .line span.on { display: inline; }
 .line b { font-weight: 500; color: var(--color-ink); }
-.emblems { display: flex; flex-wrap: wrap; gap: 3px; }
-.emblems button { width: 22px; height: 22px; padding: 3.5px; border: 1px solid var(--color-rule); border-radius: 50%; background: none; color: var(--color-dim); cursor: pointer; }
+.emblems { display: grid; grid-template-columns: repeat(auto-fill, 30px); gap: 5px; }
+/* each badge in its patch's cut */
+.emblems button { width: 30px; height: 30px; padding: 6px; border: 1.5px solid color-mix(in oklab, var(--color-amber) 50%, transparent); border-radius: 50%; background: color-mix(in oklab, var(--color-amber) 10%, transparent); color: var(--color-amber); cursor: pointer; transition: transform 0.2s var(--ease-out-expo), background 0.2s; }
+.emblems button:nth-child(4n + 2) { border-radius: 30%; }
+.emblems button:nth-child(4n + 3) { border-radius: 4px 4px 50% 50%; }
+.emblems button:nth-child(4n + 4) { border-radius: 9px; }
 .emblems svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.emblems button.on { color: var(--color-amber); border-color: var(--color-amber); }
+.emblems button:hover { transform: translateY(-2px); background: color-mix(in oklab, var(--color-amber) 22%, transparent); }
+.emblems button.on { background: var(--color-amber); border-color: var(--color-amber); color: var(--color-on-accent); }
 
 /* too small for one screen: the sheet becomes a column, the lens right after who I am */
 @media (max-width: 1023px), (max-height: 679px) {
@@ -235,8 +243,7 @@ html.focus .planet-host canvas {
 }
 /* a phone: the craft sits above its parts list, which needs the full width */
 @media (max-width: 639px) {
-  .bay { grid-template-columns: minmax(0, 1fr); grid-template-rows: 120px auto; gap: 12px 0; }
-  .instruments { row-gap: 7px; }
+  .bay { grid-template-columns: minmax(0, 1fr); grid-template-rows: 160px auto; gap: 12px 0; }
 }
 @media (min-width: 640px) and (max-width: 1023px) {
   .t-payload, .t-plan { grid-column: auto / span 1 !important; }

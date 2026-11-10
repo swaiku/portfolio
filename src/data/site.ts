@@ -90,14 +90,8 @@ export const missions: { name: string; where: string; brief: string; tags: strin
   },
 ];
 
-/** What I fly with, and the mission each set flew on: tools with a track record, not a keyword list. */
-export const instruments = [
-  { tools: 'C++, ROS 2, Nav2, py_trees', flew: 'Eurobot' },
-  { tools: 'Python, PX4, SuperPoint', flew: 'UAV thesis' },
-  { tools: 'Three.js, TSL, Svelte', flew: 'This site' },
-  { tools: 'Docker, Linux, Raspberry Pi 5', flew: 'Homelab' },
-];
-export const alsoAboard = ['Go', 'TypeScript', 'PyTorch', 'scikit-learn', 'MySQL'];
+/** What I fly with: the tools behind the missions above, then the rest of the kit. */
+export const tools = ['C++', 'ROS 2', 'Nav2', 'py_trees', 'Python', 'PX4', 'SuperPoint', 'Three.js', 'TSL', 'Svelte', 'Docker', 'Linux', 'Raspberry Pi 5', 'Go', 'TypeScript', 'PyTorch', 'scikit-learn', 'MySQL'];
 
 // `rim` and `motto` are what the patch says round its edge; `icon` is its emblem (data/icons.ts)
 export const offDuty = [
