@@ -1,8 +1,8 @@
 import {
-  Fn, abs, clamp, dot, exp, float, instanceIndex, length, max, mix, normalize, normalView, positionGeometry, positionLocal, positionViewDirection, pow,
+  Fn, abs, clamp, cos, dot, exp, float, floor, hash, instanceIndex, sin, length, max, mix, normalize, normalView, positionGeometry, positionLocal, positionViewDirection, pow,
   select, smoothstep, texture, uv, vec3, vec4,
 } from 'three/tsl';
-import { CustomBlending, DoubleSide, NodeMaterial, OneFactor, OneMinusSrcColorFactor } from 'three/webgpu';
+import { CustomBlending, DoubleSide, NodeMaterial, OneFactor, OneMinusSrcColorFactor, SpriteNodeMaterial } from 'three/webgpu';
 import type { Node, Texture } from 'three/webgpu';
 import type { Uniforms } from '../uniforms';
 import { fbm, gnoise, mute, SUN_DIR, tonemap, worley } from './common';
@@ -92,6 +92,38 @@ export const createNebulaMaterial = (u: Uniforms, picture: Texture) => {
   m.fragmentNode = Fn(() => {
     const col = texture(picture, uv()).level(0).rgb;
     return vec4(float(1).sub(exp(col.mul(u.fade).mul(1.4).negate())), 1);
+  })();
+  return m;
+};
+
+/**
+ * A spiral galaxy as a swarm of star sprites, one instance each, after Bruno Simon's TSL galaxy (three.js journey).
+ * Everything about a star comes from a hash of its index, so there is no buffer to fill or rebuild: the world only
+ * sets the number of arms, how tightly they wind and the three colours. The disk lies in the xz plane.
+ */
+export const createGalaxyMaterial = (u: Uniforms) => {
+  const m = additive(new SpriteNodeMaterial()) as SpriteNodeMaterial;
+  m.depthTest = false;
+  const rnd = (salt: number) => hash(instanceIndex.add(salt * 104729));
+  const t = rnd(1); // 0 at the centre, 1 at the rim
+  const radius = pow(t, 1.5).mul(1.3); // crowded toward the middle
+  const arm = floor(rnd(2).mul(u.galArms)).mul(2 * Math.PI).div(u.galArms);
+  // the pattern turns as one piece: an arm is a wave the stars pass through, so it never winds itself up
+  const angle = arm.add(radius.mul(u.galTwist)).sub(u.clock.mul(0.015));
+  const cube = (x: Node) => x.mul(x).mul(x); // keeps the sign, and most stars close to their arm
+  const haze = rnd(7).lessThan(0.03); // a few wide, faint sprites: the unresolved light between the stars
+  const spread = radius.mul(0.3).add(0.1);
+  const off = vec3(cube(rnd(3).mul(2).sub(1)), cube(rnd(4).mul(2).sub(1)).mul(mix(0.9, 0.22, smoothstep(0, 0.45, t))), cube(rnd(5).mul(2).sub(1))).mul(spread);
+  m.positionNode = u.rotP.mul(vec3(cos(angle).mul(radius), 0, sin(angle).mul(radius)).add(off));
+  m.scaleNode = select(haze, float(0.5), pow(rnd(6), 4).mul(0.05).add(0.012));
+  m.colorNode = Fn(() => {
+    const core = mix(u.nebC, vec3(1, 0.95, 0.85), 0.5);
+    const tint = mix(core, mix(u.nebB, u.nebA, rnd(8)), smoothstep(0.04, 0.55, t));
+    const d = length(uv().sub(0.5));
+    // dimmer toward the middle, where thousands of sprites pile up and would burn to a flat white disc
+    const point = clamp(float(0.035).div(d).sub(0.07), 0, 3).mul(mix(0.12, 1, smoothstep(0, 0.35, t)));
+    const cloud = smoothstep(0.5, 0, d).mul(0.05);
+    return vec4(float(1).sub(exp(tint.mul(select(haze, cloud, point)).mul(u.fade).negate())), 1);
   })();
   return m;
 };

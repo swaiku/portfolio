@@ -387,22 +387,6 @@ export const createNebulaBake = (u: Uniforms) =>
         env.assign(clamp(wall.mul(float(1).sub(pillar)).mul(0.9).add(rim.mul(0.8)), 0, 1));
         dens.assign(mix(dens, float(0.35), pillar));
         glow.assign(rim.mul(0.6));
-      }).ElseIf(shape.greaterThan(5.5), () => {
-        // spiral galaxy seen at an angle: a warm bulge, two arms winding out of it, dust lanes on their inner edge and
-        // knots of young stars along them
-        const ang = seed.z;
-        const gx = d.x.mul(cos(ang)).add(d.y.mul(sin(ang)));
-        const gy = d.x.mul(sin(ang).negate()).add(d.y.mul(cos(ang))).div(sin(seed.x.mul(1.9)).mul(0.18).add(0.5)); // the disk's tilt
-        const rr = max(length(vec2(gx, gy)), 0.001).toVar();
-        const wind = atan(gy, gx).sub(rr.add(0.06).log().mul(sin(seed.y).mul(0.6).add(3.1))).add(warp.x.mul(0.5)).toVar();
-        const arm = pow(cos(wind.mul(2)).mul(0.5).add(0.5), 2);
-        const lane = pow(cos(wind.mul(2).add(1.0)).mul(0.5).add(0.5), 6);
-        const disk = exp(rr.mul(-3.4)).mul(smoothstep(1.25, 0.8, rr));
-        const knots = pow(clamp(gnoise(vec3(q.mul(26), seed.x)).mul(1.7), 0, 1), 3).mul(arm);
-        env.assign(clamp(disk.mul(arm.mul(2.4).add(0.35)).mul(float(1).sub(lane.mul(0.55).mul(smoothstep(0.08, 0.3, rr)))), 0, 1));
-        dens.assign(clamp(mass.mul(0.45).add(0.75).add(knots.mul(1.5)), 0, 1.6));
-        core.assign(exp(rr.mul(rr).mul(-38)).add(exp(rr.mul(-9)).mul(0.35)));
-        glow.assign(knots.mul(disk).mul(1.2).add(arm.mul(disk).mul(0.25)));
       }).Else(() => {
         // veil: long thin sheets of shocked gas, no centre
         const edge = fbm(vec3(q.mul(1.1), seed.y.add(3)), 4);

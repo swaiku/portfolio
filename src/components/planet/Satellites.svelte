@@ -6,9 +6,10 @@
   import type { Group, Material, Mesh } from 'three/webgpu';
   import { uniform } from 'three/tsl';
   import { CORONA_RADIUS, createCoronaMaterial, createStarMaterial } from '../../lib/planet/tsl/star';
-  import { BEAM_LENGTH, createBeamMaterial, createMoonMaterial, createRockMaterial } from '../../lib/planet/tsl/space';
+  import { BEAM_LENGTH, createBeamMaterial, createGalaxyMaterial, createMoonMaterial, createRockMaterial } from '../../lib/planet/tsl/space';
   import { COMET_HALF_WIDTH, COMET_HEAD_OVERHANG, COMET_LENGTH, createCometMaterial } from '../../lib/planet/tsl/comet';
   import type { Uniforms, WorldLook } from '../../lib/planet/uniforms';
+  import { quality } from '../../lib/planet/quality.svelte';
 
   let { look, u, materials, primary }: { look: WorldLook; u: Uniforms; materials: Record<string, Material>; primary: Group | undefined } = $props();
 
@@ -44,6 +45,10 @@
     .translate((COMET_LENGTH - COMET_HEAD_OVERHANG) / 2, 0, 0);
   const nebulaPlane = new PlaneGeometry(3.1 * 1.2, 3.1);
   let nebulaMesh = $state<Mesh>();
+  // fewer stars on a weak device; the sprites are small, so the count is what costs
+  const galaxy = new InstancedMesh(new PlaneGeometry(1, 1), createGalaxyMaterial(u), { off: 1, low: 12000, mid: 24000, high: 45000 }[quality.tier]);
+  galaxy.frustumCulled = false; // every instance sits at the origin as far as three.js knows
+  galaxy.rotation.x = 1.08; // the disk leans toward the camera
 
   // the second star of a binary: its own colours, spin and pulsar poles, so it need not be the primary's twin
   const compRamp = Array.from({ length: 5 }, () => uniform(new Vector3()));
@@ -177,6 +182,7 @@
     <T.Mesh geometry={beamDown} material={companionBeam} renderOrder={3} />
   </T.Group>
 </T.Group>
-<T.Mesh bind:ref={nebulaMesh} geometry={nebulaPlane} material={materials.nebula} renderOrder={2} visible={look.kind === 'nebula'} />
+<T.Mesh bind:ref={nebulaMesh} geometry={nebulaPlane} material={materials.nebula} renderOrder={2} visible={look.kind === 'nebula' && !look.galaxy} />
+<T is={galaxy} visible={!!look.galaxy} renderOrder={2} />
 
 <T.Mesh bind:ref={cometMesh} geometry={cometSheet} material={comet} renderOrder={3} visible={look.kind === 'comet'} />
