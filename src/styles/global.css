@@ -224,6 +224,11 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
   .lens { order: -1; height: min(70svh, 560px); }
   .bay, .ascent { min-height: 200px; }
 }
+/* a phone: the craft sits above its parts list, which needs the full width */
+@media (max-width: 639px) {
+  .bay { grid-template-columns: minmax(0, 1fr); grid-template-rows: 120px auto; gap: 12px 0; }
+  .instruments { row-gap: 7px; }
+}
 @media (min-width: 640px) and (max-width: 1023px) {
   .t-payload, .t-plan { grid-column: auto / span 1 !important; }
 }
