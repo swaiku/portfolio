@@ -102,20 +102,26 @@
 <canvas bind:this={tear} class="tear" class:on={tearing} aria-hidden="true"></canvas>
 
 <div class="hud">
-  <p class="corner tl">
-    <span class="k hi">Target · {locked ? sim.name : sim.state === 'NO-GL' ? 'stand-in, no GPU' : 'acquiring'}</span>
-    {#if locked}<span class="k">{sim.rarity}{odds ? ` · ${odds}% of rolls` : ''}</span>{/if}
-    {#if sim.state !== 'NO-GL'}<span class="k" data-seed>Seed {sim.seed}</span>{/if}
-  </p>
-  <p class="corner tr">
-    <span class="k hi">Ground station · {base}</span>
-    <span class="k">{coords} · <Clock {tz} /></span>
-  </p>
-  <button type="button" class="k hi corner bl" onclick={openAtlas}>Atlas · {seenCount()}/{TYPES.length} →</button>
+  <!-- the frame is a hairline that the labels interrupt, so no text ever floats over the world -->
+  <div class="edge top">
+    <i></i>
+    <p class="tag">
+      <span class="k hi">Target · {locked ? sim.name : sim.state === 'NO-GL' ? 'stand-in, no GPU' : 'acquiring'}</span>
+      {#if locked}<span class="k wide">{sim.rarity}{odds ? ` · ${odds}% of rolls` : ''}</span>{/if}
+      {#if sim.state !== 'NO-GL'}<span class="k wider" data-seed>Seed {sim.seed}</span>{/if}
+    </p>
+    <i class="run"></i>
+    <p class="tag wide">
+      <span class="k hi">{base}</span>
+      <span class="k wider">{coords}</span>
+      <span class="k"><Clock {tz} /></span>
+    </p>
+    <i></i>
+  </div>
   {#if sim.state !== 'NO-GL'}
     <div class="dial" role="group" aria-label="Tune the lens to a class of world">
       <p class="k hi now" aria-live="polite">{locked && at >= 0 ? `${code(at)} · ${TYPES[at].label}` : 'Tuning…'}</p>
-      <div class="scale">
+      <div class="scale" style="--n: {TYPES.length}">
         {#if aim >= 0}<span class="needle" class:busy={!locked || held} style="--i: {aim}" aria-hidden="true"></span>{/if}
         <button type="button" class="step" disabled={!ready} onclick={() => step(-1)} aria-label="Previous class">‹</button>
         {#each TYPES as t, i (t.id)}
@@ -136,14 +142,20 @@
       </div>
     </div>
   {/if}
-  {#if locked}
-    <button type="button" class="k hi corner br" disabled={sim.cool > 0} onclick={() => dispatchEvent(new Event('planet:reseed'))}>
-      {sim.cool > 0 ? `Recalibrating ${sim.cool}s` : 'Roll a new world ↻'}
-    </button>
-  {:else if sim.state !== 'NO-GL'}
-    <!-- not live: a screen reader would read every percent; the dial's label announces the world once it is in -->
-    <span class="k corner br">Signal <span class="num">{pct}%</span></span>
-  {/if}
+  <div class="edge bottom">
+    <i></i>
+    <button type="button" class="k hi" onclick={openAtlas}>Atlas · {seenCount()}/{TYPES.length} →</button>
+    <i class="run"></i>
+    {#if locked}
+      <button type="button" class="k hi" disabled={sim.cool > 0} onclick={() => dispatchEvent(new Event('planet:reseed'))}>
+        {sim.cool > 0 ? `Recalibrating ${sim.cool}s` : 'Roll a new world ↻'}
+      </button>
+    {:else if sim.state !== 'NO-GL'}
+      <!-- not live: a screen reader would read every percent; the dial's label announces the world once it is in -->
+      <span class="k">Signal <span class="num">{pct}%</span></span>
+    {/if}
+    <i></i>
+  </div>
 </div>
 
 <style>
@@ -170,21 +182,33 @@
   .tear { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; opacity: 0; pointer-events: none; transition: opacity 0.4s; }
   .tear.on { opacity: 1; transition: none; }
 
-  .hud { position: absolute; inset: 0; }
-  .corner { position: absolute; margin: 0; display: flex; flex-direction: column; gap: 5px; }
-  .tl { left: 50px; top: 24px; }
-  .tr { right: 50px; top: 24px; align-items: flex-end; text-align: right; }
-  .bl { left: 50px; bottom: 22px; }
-  .br { right: 50px; bottom: 22px; }
-  /* the bottom corners swap a button for a readout while a world bakes: same box, so nothing jumps */
-  .bl, .br { display: block; padding: 6px 0; line-height: 1.5; }
+  /* the frame: a hairline 18px in, broken by its own labels; the picture darkens a little under the two label rows */
+  .hud {
+    --line: rgb(236 239 251 / 0.3);
+    position: absolute; inset: 0; container-type: inline-size;
+    background: linear-gradient(rgb(4 5 11 / 0.55), transparent 70px), linear-gradient(to top, rgb(4 5 11 / 0.65), transparent 130px);
+    text-shadow: 0 0 8px var(--color-space), 0 0 2px var(--color-space);
+  }
+  .hud::before, .hud::after { content: ''; position: absolute; top: 18px; bottom: 18px; width: 1px; background: var(--line); }
+  .hud::before { left: 14px; }
+  .hud::after { right: 14px; }
+  .edge { position: absolute; left: 14px; right: 14px; height: 30px; display: flex; align-items: center; gap: 12px; }
+  .top { top: 3px; }
+  .bottom { bottom: 3px; }
+  .edge > i { flex: 0 0 18px; height: 1px; background: var(--line); }
+  .edge > i.run { flex: 1; }
+  .tag { margin: 0; display: flex; gap: 16px; white-space: nowrap; }
   /* a fixed slot for the percentage: the label must not shuffle as the digits change */
   .num { display: inline-block; min-width: 4.2ch; text-align: right; }
-  button { background: none; border: 0; padding: 6px 0; cursor: pointer; color: inherit; }
+  button { background: none; border: 0; padding: 6px 0; cursor: pointer; color: inherit; white-space: nowrap; }
+  /* a narrow lens keeps the essentials on its top line */
+  @container (max-width: 980px) { .wider { display: none; } }
+  @container (max-width: 640px) { .wide { display: none; } }
 
-  .dial { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .dial { position: absolute; left: 50%; bottom: 38px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
   .now { margin: 0; white-space: nowrap; }
-  .scale { --tick: 26px; --step: 34px; position: relative; display: flex; align-items: flex-end; }
+  /* a tick is 26px wide, less when the lens is too narrow to hold one per class */
+  .scale { --step: 34px; --tick: min(26px, calc((100cqw - 2 * var(--step) - 36px) / var(--n))); position: relative; display: flex; align-items: flex-end; }
   /* the needle glides to the tick the lens is tuned to, and breathes while the new world bakes */
   .needle {
     position: absolute; bottom: -7px; width: 14px; height: 3px; border-radius: 2px; background: var(--color-amber);
@@ -205,12 +229,5 @@
   .step:hover:not(:disabled) { color: var(--color-amber); }
   button:hover:not(:disabled) { color: var(--color-amber); }
   button:disabled { opacity: 0.55; cursor: default; }
-  @media (max-width: 1023px), (max-height: 679px) {
-    .tl { left: 20px; top: 16px; }
-    .tr { display: none; }
-    .bl { left: 20px; bottom: 96px; }
-    .br { right: 20px; bottom: 96px; }
-    /* 24px a tick: the smallest target a finger can hit (WCAG 2.5.8), and the dial still fits a 360px phone */
-    .scale { --tick: 24px; --step: 24px; }
-  }
+  @media (max-width: 1023px), (max-height: 679px) { .scale { --step: 24px; } }
 </style>
