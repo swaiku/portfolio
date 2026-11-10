@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro';
 import Lens from '../components/Lens.svelte';
 import Atlas from '../components/Atlas.svelte';
 import { site, flightPlan, missions, instruments, alsoAboard, offDuty } from '../data/site';
+import { launchers, telescopes, LAUNCHER_BOX, TELESCOPE_BOX } from '../data/crafts';
 
 const featured = missions.filter((m) => m.line);
 const others = missions.filter((m) => !m.line);
@@ -55,20 +56,46 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
     <section id="payload" class="tile t-payload" aria-labelledby="payload-h">
       <span class="k no" aria-hidden="true">02</span>
       <h2 id="payload-h" class="k hi">Payload <span class="k">· flown on</span></h2>
-      <dl class="instruments">
-        {instruments.map((i) => (<><dt>{i.tools}</dt><dd class="k">{i.flew}</dd></>))}
-      </dl>
+      <div class="bay" data-crafts data-craft="0">
+        <div class="fig" aria-hidden="true">
+          {telescopes.map((c, n) => (
+            <svg class="craft" data-i={n} viewBox={TELESCOPE_BOX}>
+              <g set:html={c.svg} />
+              {c.tags!.map(([x, y, tx, ty], i) => (
+                <g class="tag"><path d={`M${x} ${y}L${tx} ${ty}`} /><circle cx={tx} cy={ty} r="6.5" /><text x={tx} y={ty}>{i + 1}</text></g>
+              ))}
+            </svg>
+          ))}
+        </div>
+        <dl class="instruments">
+          {instruments.map((i, n) => (<><dt><span class="k" aria-hidden="true">{n + 1}</span>{i.tools}</dt><dd class="k">{i.flew}</dd></>))}
+        </dl>
+      </div>
       <p class="also"><span class="k">Also aboard</span> {alsoAboard.join(', ')}</p>
     </section>
 
     <section class="tile t-plan" aria-labelledby="plan-h">
       <span class="k no" aria-hidden="true">03</span>
       <h2 id="plan-h" class="k hi">Flight plan</h2>
-      <ol class="plan">
-        {plan.map((s) => (
-          <li class:list={{ now: s.phase === 'now' }}><span class="pin" aria-hidden="true"></span><span>{s.title}</span><span class="k">{s.phase}</span></li>
-        ))}
-      </ol>
+      <div class="ascent" data-crafts data-craft="0">
+        <div class="fig" aria-hidden="true">
+          {launchers.map((c, n) => (<svg class="craft" data-i={n} viewBox={LAUNCHER_BOX} set:html={c.svg} />))}
+        </div>
+        <ol class="plan">
+          {plan.map((s) => (
+            <li class:list={{ now: s.phase === 'now' }}><span class="pin" aria-hidden="true"></span><span>{s.title}</span><span class="k">{s.phase}</span></li>
+          ))}
+        </ol>
+        <p class="k cartouche" aria-hidden="true">
+          {launchers.map((c, n) => (<span class="cap" data-i={n}>{c.name} · {c.note}</span>))}
+        </p>
+      </div>
+      <!-- a different craft on each visit; the first one stands when scripts are off -->
+      <script is:inline>
+        document.querySelectorAll('[data-crafts]').forEach((el) => {
+          el.dataset.craft = Math.floor(Math.random() * el.querySelectorAll('.craft').length);
+        });
+      </script>
     </section>
 
     <section id="off-duty" class="tile t-leave" aria-labelledby="leave-h">
