@@ -2,7 +2,8 @@
 //   --yaw --pitch --roll   view angles in degrees (orthographic)
 //   --up x|y|z|-x|-y|-z    which model axis points up (default y)
 //   --box w,h              the svg's viewBox size
-//   --fit n                the model's on-screen height (or width with --fit-width) in box units; it stands on the box's floor
+//   --fit n                the model's on-screen height in box units, less if the box is too narrow for that
+//   --floor n              y of the model's lowest point (default: centred)
 //   --crease n             angle in degrees past which an edge between two faces is drawn (default 40)
 //   --min n                shortest stroke kept, in box units (default 1)
 //   --clip lo,hi           keep only the triangles between these fractions of the model's height (drops a stand)
@@ -150,7 +151,7 @@ for (let t = 0; t < P.length; t += 9) {
   }
 }
 const EPS = (z1 - z0) * Number(opt('eps', '0.004'));
-const scale = (args.includes('--fit-width') ? fit / (x1 - x0) : fit / (y1 - y0));
+const scale = Math.min(fit / (y1 - y0), (boxW - 4) / (x1 - x0)); // whichever of height and width runs out first
 const floor = Number(opt('floor', String(boxH - (boxH - (y1 - y0) * scale) / 2))); // y of the model's lowest point
 const ox = boxW / 2 - ((x0 + x1) / 2) * scale;
 const px = (x: number) => ox + x * scale, py = (y: number) => floor - (y - y0) * scale;

@@ -1,21 +1,23 @@
 // Real spacecraft for the sheet's tiles, as line drawings made from NASA's own 3D models
 // (github.com/nasa/NASA-3D-Resources, free of copyright) by tools/wireframe.ts. The files live in public/crafts.
+// `made` is how each was drawn, to draw it again: bun tools/wireframe.ts <model> public/crafts/<file> <made>
 
-export interface Craft { name: string; note: string; file: string }
+export interface Craft { name: string; note: string; file: string; made: string }
 
-// both launchers are drawn at one scale (2.7 units per metre), standing on the same floor
+// each launcher fills the height it is given: they are not at one scale
+const L = '--fit 330 --floor 334';
 export const launchers: Craft[] = [
-  { name: 'Saturn V', note: '110.6 m', file: 'saturn-v.svg' },
-  { name: 'SLS Block 1', note: '98 m', file: 'sls.svg' },
+  { name: 'Saturn V', note: '110.6 m', file: 'saturn-v.svg', made: `--box 56,336 ${L}` },
+  { name: 'SLS Block 1', note: '98 m', file: 'sls.svg', made: `--box 84,336 ${L} --up z --clip 0.03,1` },
+  { name: 'Space Shuttle', note: '56 m', file: 'shuttle.svg', made: `--box 108,336 ${L} --up -z --yaw 60` },
+  { name: 'Jupiter-C', note: '21 m', file: 'jupiter-c.svg', made: `--box 52,336 ${L} --crease 70` },
 ];
 
-export const telescopes: Craft[] = [
-  { name: 'James Webb', note: '6.5 m mirror', file: 'webb.svg' },
-  { name: 'Hubble', note: '2.4 m mirror', file: 'hubble.svg' },
+const T = '--box 160,150 --fit 140';
+export const probes: Craft[] = [
+  { name: 'James Webb', note: '2021', file: 'webb.svg', made: `${T} --yaw 30 --pitch 20` },
+  { name: 'Hubble', note: '1990', file: 'hubble.svg', made: `${T} --yaw 30 --pitch 20` },
+  { name: 'Voyager', note: '1977', file: 'voyager.svg', made: `${T} --yaw 30 --pitch 20` },
+  { name: 'Cassini', note: '1997', file: 'cassini.svg', made: `${T} --yaw 300 --pitch 20` },
+  { name: 'Ingenuity', note: '2020', file: 'ingenuity.svg', made: `${T} --yaw 120 --pitch 20` },
 ];
-
-// how each drawing was made, to make it again:
-//   saturn-v  --box 60,336 --fit 299 --floor 332
-//   sls       --box 60,336 --fit 265 --floor 332 --up z --clip 0.03,1
-//   hubble    --box 160,150 --fit 140 --yaw 30 --pitch 15 --roll -50
-//   webb      --box 160,150 --fit 135 --yaw 12 --pitch 25

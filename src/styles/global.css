@@ -182,7 +182,10 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
 /* the drawing never sets the tile's height: it takes the room the text leaves */
 .craft { position: absolute; inset: 0; width: 100%; height: 100%; display: none; object-fit: contain; }
 .cap { display: none; }
-[data-craft='0'] :is(.craft, .cap)[data-i='0'], [data-craft='1'] :is(.craft, .cap)[data-i='1'] { display: block; }
+:is(.craft, .cap).on { display: block; }
+/* the probe's name sits under its drawing */
+.bay .craft { height: calc(100% - 26px); }
+.bay .cap { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; }
 @media (prefers-reduced-motion: no-preference) {
   .bay .craft { animation: plot-x 1.6s var(--ease-out-expo) 0.3s both; }
   .ascent .craft { animation: plot-y 1.8s var(--ease-out-expo) 0.3s both; }
@@ -197,7 +200,7 @@ html.focus .lens::before, html.focus .lens::after { animation: frame 3.2s cubic-
 .instruments dd { margin: 0; text-align: right; color: var(--color-amber); }
 
 /* flight plan: the steps climb a launcher, the current one at the top; a station line runs from each step across it */
-.ascent { --w: 60px; flex: 1; min-height: 0; display: grid; grid-template-columns: var(--w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 0 14px; margin-top: 10px; }
+.ascent { --w: 72px; flex: 1; min-height: 0; display: grid; grid-template-columns: var(--w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 0 14px; margin-top: 10px; }
 .ascent .fig { grid-row: 1 / 3; }
 .cartouche { padding-top: 6px; border-top: 1px solid var(--color-rule); }
 .plan { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

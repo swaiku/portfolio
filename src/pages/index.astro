@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import Lens from '../components/Lens.svelte';
 import Atlas from '../components/Atlas.svelte';
 import { site, flightPlan, missions, instruments, alsoAboard, offDuty } from '../data/site';
-import { launchers, telescopes } from '../data/crafts';
+import { launchers, probes } from '../data/crafts';
 
 const craft = (file: string) => `${import.meta.env.BASE_URL.replace(/\/$/, '')}/crafts/${file}`;
 
@@ -58,9 +58,10 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
     <section id="payload" class="tile t-payload" aria-labelledby="payload-h">
       <span class="k no" aria-hidden="true">02</span>
       <h2 id="payload-h" class="k hi">Payload <span class="k">· flown on</span></h2>
-      <div class="bay" data-crafts data-craft="0">
+      <div class="bay" data-crafts>
         <div class="fig" aria-hidden="true">
-          {telescopes.map((c, n) => (<img class="craft" data-i={n} src={craft(c.file)} alt="" loading="lazy" decoding="async" />))}
+          {probes.map((c, n) => (<img class:list={['craft', { on: !n }]} data-i={n} src={craft(c.file)} alt="" loading="lazy" decoding="async" />))}
+          {probes.map((c, n) => (<span class:list={['k cap', { on: !n }]} data-i={n}>{c.name} · {c.note}</span>))}
         </div>
         <dl class="instruments">
           {instruments.map((i) => (<><dt>{i.tools}</dt><dd class="k">{i.flew}</dd></>))}
@@ -72,9 +73,9 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
     <section class="tile t-plan" aria-labelledby="plan-h">
       <span class="k no" aria-hidden="true">03</span>
       <h2 id="plan-h" class="k hi">Flight plan</h2>
-      <div class="ascent" data-crafts data-craft="0">
+      <div class="ascent" data-crafts>
         <div class="fig" aria-hidden="true">
-          {launchers.map((c, n) => (<img class="craft" data-i={n} src={craft(c.file)} alt="" loading="lazy" decoding="async" />))}
+          {launchers.map((c, n) => (<img class:list={['craft', { on: !n }]} data-i={n} src={craft(c.file)} alt="" loading="lazy" decoding="async" />))}
         </div>
         <ol class="plan">
           {plan.map((s) => (
@@ -82,13 +83,14 @@ const plan = flightPlan.filter((s) => s.phase !== 'alumni').slice(0, 4);
           ))}
         </ol>
         <p class="k cartouche" aria-hidden="true">
-          {launchers.map((c, n) => (<span class="cap" data-i={n}>{c.name} · {c.note}</span>))}
+          {launchers.map((c, n) => (<span class:list={['cap', { on: !n }]} data-i={n}>{c.name} · {c.note}</span>))}
         </p>
       </div>
       <!-- a different craft on each visit; the first one stands when scripts are off -->
       <script is:inline>
         document.querySelectorAll('[data-crafts]').forEach((el) => {
-          el.dataset.craft = Math.floor(Math.random() * el.querySelectorAll('.craft').length);
+          const pick = String(Math.floor(Math.random() * el.querySelectorAll('.craft').length));
+          el.querySelectorAll('[data-i]').forEach((x) => x.classList.toggle('on', x.dataset.i === pick));
         });
       </script>
     </section>
