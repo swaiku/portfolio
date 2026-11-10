@@ -20,4 +20,7 @@ export const probes: Craft[] = [
   { name: 'Voyager', note: '1977', file: 'voyager.svg', made: `${T} --yaw 30 --pitch 20` },
   { name: 'Cassini', note: '1997', file: 'cassini.svg', made: `${T} --yaw 300 --pitch 20` },
   { name: 'Ingenuity', note: '2020', file: 'ingenuity.svg', made: `${T} --yaw 120 --pitch 20` },
+  // the model is far denser than a tile can show: only the sharpest folds and the longer strokes are kept
+  { name: 'Perseverance', note: '2020', file: 'perseverance.svg', made: `${T} --yaw 30 --pitch 20 --crease 85 --min 6` },
+  { name: 'Opportunity', note: '2003', file: 'opportunity.svg', made: `${T} --yaw 330 --pitch 20` },
 ];
