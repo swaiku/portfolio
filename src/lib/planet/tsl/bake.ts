@@ -1,6 +1,6 @@
 import {
   Fn, float, mix, normalize, floor, fract, abs, clamp, select, smoothstep, cos, uniform, uv, vec2, vec3, vec4,
-  positionGeometry, dot, If, max, texture, length, sin, exp, pow, atan,
+  positionGeometry, dot, If, Loop, max, min, mod, texture, length, sin, exp, pow, atan,
 } from 'three/tsl';
 import { NodeMaterial } from 'three/webgpu';
 import type { Node, Texture } from 'three/webgpu';
@@ -257,27 +257,49 @@ export const createSkyUniforms = (): SkyUniforms => ({
   seed: uniform(new Vector3()), a: uniform(new Vector3()), b: uniform(new Vector3()), c: uniform(new Vector3()),
 });
 
-/** Linear-light nebula and galactic band; stars are drawn procedurally by the dome itself. */
+/**
+ * Linear-light deep field; the sharp stars are drawn procedurally by the dome itself.
+ * After Kali's "Star Nest" (shadertoy XlfGRj): the ray walks through a folded fractal and adds up how fast it changes,
+ * which gives clumps of far light and dark lanes at every depth. Three depths, three colours of the world's sky.
+ * Far too heavy to run per frame; here it runs once per world.
+ */
 export const createSkyBake = (s: SkyUniforms) =>
   bakeMaterial(
     Fn(() => {
       const d = dirFromUv(stripUv());
-      const G = normalize(vec3(0.28, 0.86, 0.42));
-      const b = dot(d, G);
-      const band = b.mul(b).mul(-14).exp();
-      const core = b.mul(b).mul(-90).exp();
-      const cloud = fbm(d.mul(3.2).add(s.seed.mul(0.4)), 6).mul(0.5).add(0.5);
-      const dust = smoothstep(0.35, 0.7, fbm(d.mul(7).add(s.seed), 5).mul(0.5).add(0.5));
-      const haze = fbm(d.mul(1.4).add(s.seed.mul(0.2)), 4).mul(0.5).add(0.5);
-
-      let col = vec3(0.004, 0.005, 0.014);
-      col = col.add(mix(s.b, s.a, haze).mul(haze.mul(haze).mul(0.8).add(0.16)).mul(0.3));
-      col = col.add(
-        mix(s.a, s.b, cloud).mul(0.55).add(s.c.mul(core).mul(0.5)).mul(band).mul(cloud).mul(0.55).mul(float(1).sub(dust.mul(0.7))),
-      );
-      return vec4(col, 1);
+      const from = s.seed.mul(0.31).add(vec3(1, 0.5, 0.5));
+      const v = vec3(0).toVar();
+      const fade = float(1).toVar();
+      const dist = float(0.1).toVar();
+      Loop(18, ({ i }) => {
+        const p = from.add(d.mul(dist).mul(0.5)).toVar();
+        p.assign(abs(vec3(0.85).sub(mod(p, 1.7)))); // tiling fold
+        const prev = float(0).toVar();
+        const a = float(0).toVar();
+        Loop(15, () => {
+          p.assign(abs(p).div(dot(p, p)).sub(0.53));
+          const l = length(p);
+          a.addAssign(abs(l.sub(prev)));
+          prev.assign(l);
+        });
+        const dark = max(float(0.3).sub(a.mul(a).mul(0.001)), 0); // dark matter: keeps the near steps from fogging the far ones
+        a.mulAssign(a.mul(a));
+        If(i.greaterThan(6), () => {
+          fade.mulAssign(float(1).sub(dark));
+        });
+        v.addAssign(vec3(dist, dist.mul(dist), sq(dist.mul(dist))).mul(a).mul(fade).mul(0.0015));
+        fade.mulAssign(0.73);
+        dist.addAssign(0.1);
+      });
+      // each sky tone keeps its hue only: the palette's own values are far too dark to tint light with
+      const hue = (c: Node) => mix(vec3(1), c.div(max(max(c.x, c.y), max(c.z, 0.0001))), 0.6);
+      // capped, since a single hot texel would show as a square once magnified; and squared: the even haze between the clumps sinks toward black, the clumps keep their light
+      const glow = sq(min(v.mul(0.012), vec3(0.75)));
+      const col = hue(s.c).mul(glow.x).add(hue(s.a).mul(glow.y)).add(hue(s.b).mul(glow.z).mul(1.6));
+      return vec4(vec3(0.004, 0.005, 0.014).add(col.mul(SKY_GAIN)), 1);
     })(),
   );
+const SKY_GAIN = 0.5; // a backdrop: it must stay well under the world in the lens
 
 export const NEBULA_ASPECT = 1.2;
 
