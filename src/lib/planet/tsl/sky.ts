@@ -1,6 +1,6 @@
 import {
   Fn, If, clamp, dFdx, dFdy, dot, float, floor, fract, length, max, mix, mx_cell_noise_float, normalize, positionLocal, pow, screenCoordinate, sin,
-  smoothstep, texture, vec2, vec3, vec4,
+  smoothstep, texture, textureBicubicLevel, vec2, vec3, vec4,
 } from 'three/tsl';
 import { BackSide, NodeMaterial } from 'three/webgpu';
 import type { Node, Texture } from 'three/webgpu';
@@ -32,7 +32,8 @@ const starLayer = (dir: Node, footprint: Node, clock: Node, seed: Node, scale: n
 
 /** Nebula + stars along a direction. Shared by the dome and by the black hole's lensed view of it. */
 export const skyColor = (skyTex: Texture, clock: Node, seed: Node, dir: Node, footprint: Node, starGain: Node = float(1)): Node => {
-  const nebula = texture(skyTex, dirToUv(dir)).level(0).rgb;
+  // bicubic: the bake's brightest texels are far larger than a pixel here, and plain bilinear shows each one as a square
+  const nebula = textureBicubicLevel(texture(skyTex, dirToUv(dir)), 0).rgb;
   // footprint and gain may hold screen-space derivatives: evaluate them here, before the per-cell branches, where every
   // pixel still runs the same code (inside a branch, derivatives across cell edges are garbage and draw grid lines)
   const fp = footprint.toVar();

@@ -32,29 +32,18 @@ const { PUBLIC_UMAMI_URL: umamiUrl, PUBLIC_UMAMI_ID: umamiId } = import.meta.env
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
     {umamiUrl && umamiId && <script defer src={`${umamiUrl}/script.js`} data-website-id={umamiId}></script>}
-    <script is:inline>
-      document.documentElement.dataset.js = '';
-    </script>
   </head>
   <body>
     <Planet client:only="svelte" />
     <slot />
     <script>
       import { faviconFor } from '../lib/favicon';
-      const els = document.querySelectorAll<HTMLElement>('.reveal');
-      const io = new IntersectionObserver(
-        (entries) => entries.forEach((e) => e.isIntersecting && (e.target.classList.add('in'), io.unobserve(e.target))),
-        { rootMargin: '0px 0px -8% 0px', threshold: 0.12 },
-      );
-      els.forEach((el) => io.observe(el));
       const showInfo = (d: { name: string; kind: string; family?: string; accent?: string; ring?: boolean }) => {
         if (d.accent) document.querySelector<HTMLLinkElement>('link[rel="icon"]')!.href = faviconFor(d.family ?? 'planet', d.accent, d.ring);
-        document.querySelectorAll('[data-planet-name]').forEach((el) => (el.textContent = `${d.name} · ${d.kind}`));
       };
       addEventListener('planet:info', (e) => showInfo((e as CustomEvent).detail));
       const early = (window as unknown as { __planet?: Parameters<typeof showInfo>[0] }).__planet;
       if (early) showInfo(early);
-      document.querySelector('[data-reseed]')?.addEventListener('click', () => dispatchEvent(new Event('planet:reseed')));
     </script>
   </body>
 </html>

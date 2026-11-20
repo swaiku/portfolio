@@ -1,6 +1,6 @@
 import {
   Fn, float, mix, normalize, floor, fract, abs, clamp, select, smoothstep, cos, uniform, uv, vec2, vec3, vec4,
-  positionGeometry, dot, If, max, texture, length, sin, exp, pow, atan,
+  positionGeometry, dot, If, Loop, max, min, mod, texture, length, sin, exp, pow, atan,
 } from 'three/tsl';
 import { NodeMaterial } from 'three/webgpu';
 import type { Node, Texture } from 'three/webgpu';
@@ -257,33 +257,76 @@ export const createSkyUniforms = (): SkyUniforms => ({
   seed: uniform(new Vector3()), a: uniform(new Vector3()), b: uniform(new Vector3()), c: uniform(new Vector3()),
 });
 
-/** Linear-light nebula and galactic band; stars are drawn procedurally by the dome itself. */
+/**
+ * Linear-light deep field; the sharp stars are drawn procedurally by the dome itself.
+ * After Kali's "Star Nest" (shadertoy XlfGRj): the ray walks through a folded fractal and adds up how fast it changes,
+ * which gives clumps of far light and dark lanes at every depth. Three depths, three colours of the world's sky.
+ * Far too heavy to run per frame; here it runs once per world.
+ */
 export const createSkyBake = (s: SkyUniforms) =>
   bakeMaterial(
     Fn(() => {
       const d = dirFromUv(stripUv());
-      const G = normalize(vec3(0.28, 0.86, 0.42));
-      const b = dot(d, G);
-      const band = b.mul(b).mul(-14).exp();
-      const core = b.mul(b).mul(-90).exp();
-      const cloud = fbm(d.mul(3.2).add(s.seed.mul(0.4)), 6).mul(0.5).add(0.5);
-      const dust = smoothstep(0.35, 0.7, fbm(d.mul(7).add(s.seed), 5).mul(0.5).add(0.5));
-      const haze = fbm(d.mul(1.4).add(s.seed.mul(0.2)), 4).mul(0.5).add(0.5);
-
-      let col = vec3(0.004, 0.005, 0.014);
-      col = col.add(mix(s.b, s.a, haze).mul(haze.mul(haze).mul(0.8).add(0.16)).mul(0.3));
-      col = col.add(
-        mix(s.a, s.b, cloud).mul(0.55).add(s.c.mul(core).mul(0.5)).mul(band).mul(cloud).mul(0.55).mul(float(1).sub(dust.mul(0.7))),
-      );
-      return vec4(col, 1);
+      const from = s.seed.mul(0.31).add(vec3(1, 0.5, 0.5));
+      const v = vec3(0).toVar();
+      const fade = float(1).toVar();
+      const dist = float(0.1).toVar();
+      Loop(18, ({ i }) => {
+        const p = from.add(d.mul(dist).mul(0.5)).toVar();
+        p.assign(abs(vec3(0.85).sub(mod(p, 1.7)))); // tiling fold
+        const prev = float(0).toVar();
+        const a = float(0).toVar();
+        Loop(15, () => {
+          p.assign(abs(p).div(dot(p, p)).sub(0.53));
+          const l = length(p);
+          a.addAssign(abs(l.sub(prev)));
+          prev.assign(l);
+        });
+        const dark = max(float(0.3).sub(a.mul(a).mul(0.001)), 0); // dark matter: keeps the near steps from fogging the far ones
+        a.mulAssign(a.mul(a));
+        If(i.greaterThan(6), () => {
+          fade.mulAssign(float(1).sub(dark));
+        });
+        v.addAssign(vec3(dist, dist.mul(dist), sq(dist.mul(dist))).mul(a).mul(fade).mul(0.0015));
+        fade.mulAssign(0.73);
+        dist.addAssign(0.1);
+      });
+      // each sky tone keeps its hue only: the palette's own values are far too dark to tint light with
+      const hue = (c: Node) => mix(vec3(1), c.div(max(max(c.x, c.y), max(c.z, 0.0001))), 0.6);
+      // capped, since a single hot texel would show as a square once magnified; and squared: the even haze between the clumps sinks toward black, the clumps keep their light
+      const glow = sq(min(v.mul(0.012), vec3(0.75)));
+      const col = hue(s.c).mul(glow.x).add(hue(s.a).mul(glow.y)).add(hue(s.b).mul(glow.z).mul(1.6));
+      return vec4(vec3(0.004, 0.005, 0.014).add(col.mul(SKY_GAIN)), 1);
     })(),
   );
+const SKY_GAIN = 0.5; // a backdrop: it must stay well under the world in the lens
 
 export const NEBULA_ASPECT = 1.2;
 
 /**
- * A nebula as a picture, painted once into a texture. Six shapes share one set of dust filaments and one colouring
- * (outer dust, middle, hot core, a scatter of tiny stars); each shape only decides where the gas is:
+ * Kali's folded fractal, as used in "Simplicity Galaxy" (shadertoy MslGWN): the point is folded and inverted over and
+ * over, and the gas is dense where two folds in a row land at the same distance. That gives thin bright filaments
+ * and knots at every scale, which layered noise never does.
+ */
+const kali = (p0: Node, iterations: number): Node => {
+  const p = p0.toVar();
+  const acc = float(0).toVar();
+  const prev = float(0).toVar();
+  const total = float(0).toVar();
+  Loop(iterations, ({ i }) => {
+    const mag = dot(p, p);
+    p.assign(abs(p).div(mag).add(vec3(-0.5, -0.4, -1.5)));
+    const w = exp(float(i).div(-7));
+    acc.addAssign(w.mul(exp(pow(abs(mag.sub(prev)), 2.2).mul(-7))));
+    total.addAssign(w);
+    prev.assign(mag);
+  });
+  return max(acc.mul(5).div(total).sub(0.7), 0);
+};
+
+/**
+ * A nebula as a picture, painted once into a texture. Six shapes share one gas (a soft mass threaded with fractal
+ * filaments) and one colouring (outer dust, middle, hot core); each shape only decides where the gas is:
  * 0 emission cloud with cavities, 1 planetary shell, 2 supernova bubble, 3 bipolar lobes, 4 pillars, 5 veil of arcs.
  * Shown on a flat quad, so it costs next to nothing per frame however grand it looks.
  */
@@ -304,13 +347,12 @@ export const createNebulaBake = (u: Uniforms) =>
       const qw = q.add(warp.mul(0.75));
       const mass = fbm(vec3(qw.mul(1.5), seed.z), 5).mul(1.8).add(0.45);
 
-      // dust threads: one family fanning out from the centre, one drifting across
-      const sx = vec3(dir.x.mul(5), dir.y.mul(5), r.mul(0.9)).add(seed);
-      const fan = ridge(gnoise(sx).add(gnoise(sx.mul(2.1)).mul(0.5)), 2.4);
-      const sy = vec3(qw.x.mul(10), qw.y.mul(1.3), seed.x.add(2));
-      const drift = ridge(gnoise(sy).add(gnoise(sy.mul(2.3)).mul(0.5)), 2.4);
+      // filaments: two depths of the folded fractal, the far one larger and fainter
+      const at = vec3(sin(seed.x.mul(1.3)), sin(seed.y.mul(2.1)), sin(seed.z.mul(1.7))).mul(0.25);
+      const near = kali(vec3(qw.div(4), 0).add(vec3(1, -1.3, 0)).add(at), 22);
+      const far = kali(vec3(q.div(3), 1.5).add(vec3(2, -1.3, -1)).add(at), 16);
       const arcs = ridge(gnoise(vec3(qw.mul(1.7), seed.z)).add(gnoise(vec3(qw.mul(3.9), seed.y)).mul(0.4)), 2.7);
-      const dens = clamp(mass.mul(0.8).add(fan.mul(0.5)).add(drift.mul(0.3)).sub(0.22), 0, 1.3).toVar();
+      const dens = clamp(mass.mul(0.45).add(near.mul(1.3)).add(far.mul(0.55)).sub(0.2), 0, 1.5).toVar();
 
       const env = float(0).toVar(); // where the gas is
       const core = float(0).toVar(); // a bright star or core at the centre
@@ -365,22 +407,6 @@ export const createNebulaBake = (u: Uniforms) =>
         env.assign(clamp(wall.mul(float(1).sub(pillar)).mul(0.9).add(rim.mul(0.8)), 0, 1));
         dens.assign(mix(dens, float(0.35), pillar));
         glow.assign(rim.mul(0.6));
-      }).ElseIf(shape.greaterThan(5.5), () => {
-        // spiral galaxy seen at an angle: a warm bulge, two arms winding out of it, dust lanes on their inner edge and
-        // knots of young stars along them
-        const ang = seed.z;
-        const gx = d.x.mul(cos(ang)).add(d.y.mul(sin(ang)));
-        const gy = d.x.mul(sin(ang).negate()).add(d.y.mul(cos(ang))).div(sin(seed.x.mul(1.9)).mul(0.18).add(0.5)); // the disk's tilt
-        const rr = max(length(vec2(gx, gy)), 0.001).toVar();
-        const wind = atan(gy, gx).sub(rr.add(0.06).log().mul(sin(seed.y).mul(0.6).add(3.1))).add(warp.x.mul(0.5)).toVar();
-        const arm = pow(cos(wind.mul(2)).mul(0.5).add(0.5), 2);
-        const lane = pow(cos(wind.mul(2).add(1.0)).mul(0.5).add(0.5), 6);
-        const disk = exp(rr.mul(-3.4)).mul(smoothstep(1.25, 0.8, rr));
-        const knots = pow(clamp(gnoise(vec3(q.mul(26), seed.x)).mul(1.7), 0, 1), 3).mul(arm);
-        env.assign(clamp(disk.mul(arm.mul(2.4).add(0.35)).mul(float(1).sub(lane.mul(0.55).mul(smoothstep(0.08, 0.3, rr)))), 0, 1));
-        dens.assign(clamp(mass.mul(0.45).add(0.75).add(knots.mul(1.5)), 0, 1.6));
-        core.assign(exp(rr.mul(rr).mul(-38)).add(exp(rr.mul(-9)).mul(0.35)));
-        glow.assign(knots.mul(disk).mul(1.2).add(arm.mul(disk).mul(0.25)));
       }).Else(() => {
         // veil: long thin sheets of shocked gas, no centre
         const edge = fbm(vec3(q.mul(1.1), seed.y.add(3)), 4);
@@ -389,15 +415,17 @@ export const createNebulaBake = (u: Uniforms) =>
         glow.assign(arcs.mul(0.2));
       });
 
-      const heat = clamp(core.mul(1.3).add(dens.mul(0.4).mul(float(1.3).sub(r))).add(glow), 0, 1.6);
+      const heat = clamp(core.mul(1.3).add(dens.mul(0.4).mul(float(1.3).sub(r))).add(glow).add(near.mul(near).mul(0.2)), 0, 1.6);
       const dust = mix(u.nebA, u.nebB, smoothstep(0.15, 0.6, heat));
       const tint = mix(dust, u.nebC, smoothstep(0.5, 1.05, heat));
       const body = dens.mul(env);
       let col = tint.mul(body.mul(heat.mul(1.3).add(0.55)));
       col = col.add(u.nebC.mul(core).mul(1.6)).add(vec3(1, 1, 1).mul(pow(core, 3)).mul(1.1));
 
-      const star = pow(clamp(gnoise(vec3(q.mul(170), seed.x)).mul(1.7), 0, 1), 14).mul(2);
-      col = col.add(mix(u.nebC, vec3(1, 1, 1), 0.5).mul(star).mul(float(1).sub(clamp(body, 0, 1).mul(0.6))));
+      col = col.add(u.nebC.mul(near.mul(near)).mul(env).mul(0.5)); // the brightest threads glow in the hot colour
+      // the picture fades out before the quad's edge, so the quad itself never shows; its stars are the dome's
+      const edge = smoothstep(1, 0.72, abs(uvn.x.sub(0.5).mul(2))).mul(smoothstep(1, 0.72, abs(uvn.y.sub(0.5).mul(2))));
+      col = col.mul(edge);
       return vec4(col, 1);
     })(),
   );

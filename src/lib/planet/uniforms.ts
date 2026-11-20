@@ -1,6 +1,6 @@
 import { Color, Matrix3, Vector2, Vector3, Vector4 } from 'three';
 import { uniform } from 'three/tsl';
-import { COMET_PALETTES, paint, pulsarSpin, Role, starScheme, type Kind, type Moon, type World } from './archetypes';
+import { COMET_PALETTES, paint, pulsarSpin, Role, starScheme, type Kind, type Moon, type World, GALAXY_SHAPE } from './archetypes';
 import { createSkyUniforms, createTerrainUniforms } from './tsl/bake';
 
 const v3 = (x = 0, y = x, z = x) => uniform(new Vector3(x, y, z));
@@ -15,7 +15,7 @@ export const createUniforms = () => ({
   liqDeep: v3(), liqShallow: v3(), iceCol: v3(1), glowCol: v3(), cloudTint: v3(1), atmoCol: v3(0.05, 0.13, 0.34),
   ringA: v3(), ringB: v3(),
   ringIn: uniform(1.3), ringOut: uniform(2), ringAmt: uniform(0.9), ringF1: uniform(30), ringF2: uniform(120),
-  ringGaps: [v2(), v2(), v2()], hasRing: uniform(0), gas: uniform(0), gasA: v3(), gasB: v3(), nebA: v3(), nebB: v3(), nebC: v3(), nebShape: uniform(0),
+  ringGaps: [v2(), v2(), v2()], hasRing: uniform(0), gas: uniform(0), gasA: v3(), gasB: v3(), nebA: v3(), nebB: v3(), nebC: v3(), nebShape: uniform(0), galArms: uniform(2), galTwist: uniform(3),
   // comets: head and ion-tail colours, then (length, ion, ion width, streaks) and (dust, bend, kink, head size), and a noise seed
   cometHead: v3(), cometTip: v3(), cometA: uniform(new Vector4()), cometB: uniform(new Vector4()), cometSeed: uniform(0),
   // (striae, anti-tail, shells, sodium tail) and (fragments, their spacing)
@@ -52,6 +52,7 @@ export interface WorldLook {
   spin: number; // rad/s on screen
   period: number; // seconds, real
   companion: LookCompanion | null;
+  galaxy?: boolean; // a nebula-family world drawn as a swarm of stars instead of a painted picture
   body: number; // radius of the star's body, in the group's units; a pulsar is a tiny dense point
 }
 
@@ -137,6 +138,10 @@ export function applyWorld(u: Uniforms, w: World): WorldLook {
     u.nebB.value = color(Role.air, [0.55, 0.42]);
     u.nebC.value = color(Role.liquid, [0.6, 0.8]);
     u.nebShape.value = w.nebula;
+    look.galaxy = w.nebula === GALAXY_SHAPE;
+    // read off the seed, not rolled: no other trait of the world moves
+    u.galArms.value = 2 + (w.seed % 3);
+    u.galTwist.value = 2.6 + ((w.seed >> 3) % 16) / 8;
     look.sizeK = 1;
     look.shiftX = -0.2; // a wide picture: pulled in so the screen edge does not crop it
     return look;

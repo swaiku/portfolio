@@ -193,7 +193,7 @@ export class WorldBaker {
   step(dt: number) {
     if (!this.optics.done) this.optics.step();
     switch (this.phase) {
-      case 'sky': this.sky.step(); if (this.sky.done) this.phase = this.look.kind === 'planet' ? 'planet' : this.look.kind === 'nebula' ? 'nebula' : 'fadein'; break;
+      case 'sky': this.sky.step(); if (this.sky.done) this.phase = this.look.kind === 'planet' ? 'planet' : this.look.kind === 'nebula' && !this.look.galaxy ? 'nebula' : 'fadein'; break;
       case 'nebula': this.nebula.step(); if (this.nebula.done) this.phase = 'fadein'; break;
       case 'planet': this.planet.step(); if (this.planet.done) this.phase = 'clouds'; break;
       case 'clouds': this.clouds.step(); if (this.clouds.done) this.phase = 'fadein'; break;

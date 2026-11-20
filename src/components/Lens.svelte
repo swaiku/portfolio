@@ -1,0 +1,232 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import Clock from './Clock.svelte';
+  import { sim } from '../lib/planet/sim.svelte';
+  import { atlas, openAtlas, seenCount, tune } from '../lib/atlas.svelte';
+  import { TYPES } from '../lib/planet/catalog';
+
+  let { base, coords, tz }: { base: string; coords: string; tz: string } = $props();
+
+  const odds = $derived(TYPES.find((t) => t.id === sim.typeId)?.weight);
+  const locked = $derived(sim.state === 'LOCKED');
+
+  // the tuning dial: one tick per class, taller the rarer it is, lit once seen
+  const TALL = { common: 12, uncommon: 18, rare: 24, epic: 30, legendary: 36 };
+  const code = (i: number) => `CL-${String(i + 1).padStart(2, '0')}`;
+  const at = $derived(TYPES.findIndex((t) => t.id === sim.typeId));
+  const ready = $derived(sim.state === 'LOCKED' || sim.state === 'SURVEY');
+  // while a world is being made the lens shows static instead of the bake; it clears as the new world fades in
+  const tuning = $derived(sim.state !== 'NO-GL' && sim.phase !== 'fadein' && sim.phase !== 'live');
+  // between the tear and the start of the new world the screen holds, already naming the class it tunes to
+  let held = $state(false);
+  let heldKind = $state<string | undefined>();
+  $effect(() => {
+    if (sim.phase !== 'live') held = false;
+  });
+  // the needle and the readout move to the class asked for at once, before the new world exists
+  const aim = $derived(held && heldKind ? TYPES.findIndex((t) => t.id === heldKind) : at);
+  const target = $derived.by(() => {
+    const i = held ? TYPES.findIndex((t) => t.id === heldKind) : at;
+    return i >= 0 ? `${code(i)} · ${TYPES[i].label}` : 'Searching the sky';
+  });
+  const pct = $derived(Math.round(sim.progress * 100));
+  // tuning away tears the last frame apart for half a second before the static (the scene sends it: Scene.svelte)
+  let tear = $state<HTMLCanvasElement>();
+  let tearing = $state(false);
+  onMount(() => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const DUR = 560;
+    let raf = 0;
+    let heldTimer = 0;
+    const onFrame = (e: Event) => {
+      const { frame: src, kind } = (e as CustomEvent<{ frame: HTMLCanvasElement; kind?: string }>).detail;
+      held = true;
+      heldKind = kind;
+      clearTimeout(heldTimer);
+      heldTimer = window.setTimeout(() => (held = false), 4000); // never stuck if the new world does not start
+      const cv = tear;
+      if (!cv) return;
+      const b = cv.getBoundingClientRect();
+      const k = src.width / innerWidth;
+      const W = (cv.width = Math.max(1, Math.round(b.width / 2)));
+      const H = (cv.height = Math.max(1, Math.round(b.height / 2)));
+      const ctx = cv.getContext('2d')!;
+      const accent = getComputedStyle(document.documentElement).getPropertyValue('--color-amber') || '#ff7a3d';
+      const start = performance.now();
+      tearing = true;
+      cancelAnimationFrame(raf);
+      const frame = (now: number) => {
+        const t = (now - start) / DUR;
+        if (t >= 1) { tearing = false; return; }
+        raf = requestAnimationFrame(frame);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = '#04050b';
+        ctx.fillRect(0, 0, W, H);
+        if (t < 0.75) {
+          ctx.drawImage(src, b.left * k, b.top * k, b.width * k, b.height * k, 0, 0, W, H);
+          // bands of the picture slip sideways, more and further as the signal goes
+          for (let n = 0; n < 3 + t * 18; n++) {
+            const y = Math.random() * H;
+            const h = 2 + Math.random() * 26;
+            ctx.drawImage(cv, 0, y, W, h, (Math.random() - 0.5) * W * 0.3 * (0.3 + t), y, W, h);
+          }
+          // a colour fringe: a few thin bars inverted against the accent
+          ctx.globalCompositeOperation = 'difference';
+          ctx.fillStyle = accent;
+          for (let n = 0; n < 2 + t * 6; n++) ctx.fillRect(0, Math.random() * H, W, 1 + Math.random() * 3);
+        } else {
+          // lost: a few last streaks on black
+          ctx.fillStyle = 'rgb(236 239 251 / 0.5)';
+          for (let n = 0; n < 6; n++) ctx.fillRect(Math.random() * W * 0.5, Math.random() * H, Math.random() * W, 1);
+        }
+      };
+      raf = requestAnimationFrame(frame);
+    };
+    addEventListener('planet:frame', onFrame);
+    return () => { removeEventListener('planet:frame', onFrame); cancelAnimationFrame(raf); clearTimeout(heldTimer); };
+  });
+
+  const step = (d: number) => tune(TYPES[(Math.max(at, 0) + d + TYPES.length) % TYPES.length].id);
+</script>
+
+<div class="static" class:on={tuning || held} aria-hidden="true">
+  <!-- inline, not a CSS url(): a background image would count as the page's largest paint, and this is decoration -->
+  <svg class="noise"><filter id="lens-grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch" /></filter><rect width="100%" height="100%" filter="url(#lens-grain)" /></svg>
+  <p class="readout">
+    <span class="k">Tuning in</span>
+    <span class="k hi target">{target}</span>
+    <span class="bar"><i style="transform: scaleX({held ? 0 : pct / 100})"></i></span>
+  </p>
+</div>
+
+<canvas bind:this={tear} class="tear" class:on={tearing} aria-hidden="true"></canvas>
+
+<div class="hud">
+  <!-- the frame is a hairline that the labels interrupt, so no text ever floats over the world -->
+  <div class="edge top">
+    <i></i>
+    <p class="tag">
+      <span class="k hi">Target · {locked ? sim.name : sim.state === 'NO-GL' ? 'stand-in, no GPU' : 'acquiring'}</span>
+      {#if locked}<span class="k wide">{sim.rarity}{odds ? ` · ${odds}% of rolls` : ''}</span>{/if}
+      {#if sim.state !== 'NO-GL'}<span class="k wider" data-seed>Seed {sim.seed}</span>{/if}
+    </p>
+    <i class="run"></i>
+    <p class="tag wide">
+      <span class="k hi">{base}</span>
+      <span class="k wider">{coords}</span>
+      <span class="k"><Clock {tz} /></span>
+    </p>
+    <i></i>
+  </div>
+  {#if sim.state !== 'NO-GL'}
+    <div class="dial" role="group" aria-label="Tune the lens to a class of world">
+      <p class="k hi now" aria-live="polite">{locked && at >= 0 ? `${code(at)} · ${TYPES[at].label}` : 'Tuning…'}</p>
+      <div class="scale" style="--n: {TYPES.length}">
+        {#if aim >= 0}<span class="needle" class:busy={!locked || held} style="--i: {aim}" aria-hidden="true"></span>{/if}
+        <button type="button" class="step" disabled={!ready} onclick={() => step(-1)} aria-label="Previous class">‹</button>
+        {#each TYPES as t, i (t.id)}
+          {@const seen = !!atlas.seen[t.id]}
+          <button
+            type="button"
+            class="tick"
+            class:seen
+            class:on={i === at}
+            style="--h: {TALL[t.rarity]}px"
+            disabled={!ready}
+            onclick={() => tune(t.id)}
+            title={seen ? `${code(i)} · ${t.label}` : `${code(i)} · unsurveyed`}
+            aria-label={seen ? `Tune to ${t.label}` : `Tune to ${code(i)}, a class not seen yet`}
+          ><i></i></button>
+        {/each}
+        <button type="button" class="step" disabled={!ready} onclick={() => step(1)} aria-label="Next class">›</button>
+      </div>
+    </div>
+  {/if}
+  <div class="edge bottom">
+    <i></i>
+    <button type="button" class="k hi" onclick={openAtlas}>Atlas · {seenCount()}/{TYPES.length} →</button>
+    <i class="run"></i>
+    {#if locked}
+      <button type="button" class="k hi" disabled={sim.cool > 0} onclick={() => dispatchEvent(new Event('planet:reseed'))}>
+        {sim.cool > 0 ? `Recalibrating ${sim.cool}s` : 'Roll a new world ↻'}
+      </button>
+    {:else if sim.state !== 'NO-GL'}
+      <!-- not live: a screen reader would read every percent; the dial's label announces the world once it is in -->
+      <span class="k">Signal <span class="num">{pct}%</span></span>
+    {/if}
+    <i></i>
+  </div>
+</div>
+
+<style>
+  /* the tuning screen: dark static, the class being tuned to, and the signal filling */
+  .static {
+    position: absolute; inset: 0; overflow: hidden; display: grid; place-items: center;
+    background: var(--color-space); opacity: 0; pointer-events: none; transition: opacity 1.1s ease;
+  }
+  .static.on { opacity: 1; transition-duration: 0.35s; }
+  .noise {
+    position: absolute; inset: -40px; opacity: 0.16;
+    width: calc(100% + 80px); height: calc(100% + 80px);
+    background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.05) 0 1px, transparent 1px 3px);
+    /* the grain jumps on the compositor: a transform, not a background-position */
+    animation: flicker 0.5s steps(5) infinite;
+  }
+  .readout { position: relative; margin: 0; display: grid; justify-items: center; gap: 10px; text-align: center; }
+  .target { font-size: 0.8rem; }
+  .bar { display: block; width: 220px; height: 2px; background: rgb(236 239 251 / 0.15); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--color-amber); transform-origin: left; transition: transform 0.4s ease; }
+  @keyframes flicker { to { transform: translate(31px, -29px); } }
+  @media (prefers-reduced-motion: reduce) { .noise { animation: none; } }
+
+  .tear { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+  .tear.on { opacity: 1; transition: none; }
+
+  /* the frame: a hairline 18px in, broken by its own labels; a dark halo keeps them readable over a bright world */
+  .hud {
+    --line: rgb(236 239 251 / 0.3);
+    position: absolute; inset: 0; container-type: inline-size;
+    text-shadow: 0 0 8px var(--color-space), 0 0 2px var(--color-space);
+  }
+  .hud::before, .hud::after { content: ''; position: absolute; top: 18px; bottom: 18px; width: 1px; background: var(--line); }
+  .hud::before { left: 14px; }
+  .hud::after { right: 14px; }
+  .edge { position: absolute; left: 14px; right: 14px; height: 30px; display: flex; align-items: center; gap: 12px; }
+  .top { top: 3px; }
+  .bottom { bottom: 3px; }
+  .edge > i { flex: 0 0 18px; height: 1px; background: var(--line); }
+  .edge > i.run { flex: 1; }
+  .tag { margin: 0; display: flex; gap: 16px; white-space: nowrap; }
+  /* a fixed slot for the percentage: the label must not shuffle as the digits change */
+  .num { display: inline-block; min-width: 4.2ch; text-align: right; }
+  button { background: none; border: 0; padding: 6px 0; cursor: pointer; color: inherit; white-space: nowrap; }
+  /* a narrow lens keeps the essentials on its top line */
+  @container (max-width: 980px) { .wider { display: none; } }
+  @container (max-width: 640px) { .wide { display: none; } }
+
+  .dial { position: absolute; left: 50%; bottom: 38px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .now { margin: 0; white-space: nowrap; }
+  /* a tick is 26px wide, less when the lens is too narrow to hold one per class */
+  .scale { --step: 34px; --tick: min(26px, calc((100cqw - 2 * var(--step) - 36px) / var(--n))); position: relative; display: flex; align-items: flex-end; }
+  /* the needle glides to the tick the lens is tuned to, and breathes while the new world bakes */
+  .needle {
+    position: absolute; bottom: -7px; width: 14px; height: 3px; border-radius: 2px; background: var(--color-amber);
+    left: calc(var(--step) + var(--i) * var(--tick) + var(--tick) / 2 - 7px);
+    box-shadow: 0 0 10px var(--color-amber);
+    transition: left 0.8s var(--ease-out-expo), background-color 0.8s;
+  }
+  .needle.busy { animation: breathe 1.1s ease-in-out infinite alternate; }
+  @keyframes breathe { from { opacity: 1; } to { opacity: 0.25; } }
+  @media (prefers-reduced-motion: reduce) { .needle { transition: none; } .needle.busy { animation: none; } }
+  .tick { width: var(--tick); height: 46px; padding: 0; display: flex; align-items: flex-end; justify-content: center; }
+  .tick i { display: block; width: 2px; height: var(--h); border-left: 2px dotted rgb(236 239 251 / 0.35); }
+  .tick.seen i { border-left-style: solid; border-color: rgb(236 239 251 / 0.75); }
+  .tick.on i { border-color: var(--color-amber); height: calc(var(--h) + 8px); }
+  .tick:hover:not(:disabled) i { border-color: var(--color-amber); }
+  .tick:focus-visible { outline-offset: -2px; }
+  .step { width: var(--step); height: 46px; font: 400 1.4rem/1 var(--font-display); color: var(--color-ink); }
+  .step:hover:not(:disabled) { color: var(--color-amber); }
+  button:hover:not(:disabled) { color: var(--color-amber); }
+  button:disabled { opacity: 0.55; cursor: default; }
+  @media (max-width: 1023px), (max-height: 679px) { .scale { --step: 24px; } }
+</style>

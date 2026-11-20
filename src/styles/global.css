@@ -3,33 +3,36 @@
 @import '@fontsource/unbounded/latin-700.css';
 @import '@fontsource/hanken-grotesk/latin-400.css';
 @import '@fontsource/hanken-grotesk/latin-500.css';
-@import '@fontsource/martian-mono/latin-400.css';
-@import '@fontsource/martian-mono/latin-500.css';
 
 @theme {
-  --color-void: #0b0f2a;
   --color-deep: #060818;
-  --color-violet: #1a1040;
   --color-ink: #eceffb;
   --color-ink-2: #c6ccea;
-  --color-dim: #8f96c2;
-  --color-line: rgb(160 175 255 / 0.16);
-  --color-line-strong: rgb(160 175 255 / 0.32);
+  --color-ink-3: #a9aec6; /* secondary lines under a title */
+  --color-dim: #8f96c2; /* labels */
+  --color-space: #04050b; /* the black behind a world: the lens tuning screen, the atlas */
+  --color-tile: #05060d;
+  --color-rule: rgb(236 239 251 / 0.13);
+  --color-on-accent: #120a06; /* ink on an accent fill */
   --color-amber: #ff7a3d; /* accent: overwritten at runtime by the current world's colour */
-  --color-ice: #8fc7ff;
   --font-display: 'Unbounded', ui-sans-serif, system-ui, sans-serif;
   --font-body: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'Martian Mono', ui-monospace, 'SFMono-Regular', monospace;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 :root {
-  --gutter: clamp(20px, 5.5vw, 88px);
   color-scheme: dark;
 }
 
+/* registered so it can be animated: a new world's colour is tuned in, not switched */
+@property --color-amber {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ff7a3d;
+}
+
 html {
-  transition: --color-amber 0.8s;
+  transition: --color-amber 1.8s ease-in-out;
   scroll-behavior: smooth;
   background: var(--color-deep);
   scrollbar-color: #2b3262 transparent;
@@ -50,7 +53,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-::selection { background: var(--color-amber); color: #120a24; }
+::selection { background: var(--color-amber); color: var(--color-on-accent); }
 :focus-visible {
   outline: 2px solid var(--color-amber);
   outline-offset: 3px;
@@ -61,218 +64,187 @@ a { color: inherit; text-underline-offset: 0.28em; text-decoration-thickness: 1p
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-thumb { background: #2b3262; border-radius: 10px; border: 2px solid var(--color-deep); }
 
-/* ---------- layout ---------- */
-.stage {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  min-height: 100svh;
-  padding: clamp(96px, 14vh, 160px) var(--gutter);
-  box-sizing: border-box;
+/* a new world: the lens zooms back out of the blur as it pulls focus, goes a touch past it and breathes with the hunt,
+   then settles. The zoom is centred on the lens (the page aims --lens-*), and
+   never drops below 1 so the canvas edge stays off screen */
+html.focus .planet-host canvas {
+  transform-origin: calc(var(--lens-l, 50vw) + var(--lens-d, 0px) / 2) calc(var(--lens-t, 50vh) + var(--lens-d, 0px) / 2);
+  animation: focus 3.2s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
-.stage.side-r { justify-content: flex-end; }
-.stage.side-l { justify-content: flex-start; }
-.stage.center { justify-content: center; text-align: center; }
-.stage::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: linear-gradient(90deg, rgb(4 6 18 / 0.78), rgb(4 6 18 / 0) 62%);
-  /* feather the top and bottom so neighbouring sections blend instead of showing a seam */
-  mask-image: linear-gradient(180deg, transparent, #000 28%, #000 72%, transparent);
+@keyframes focus {
+  0% { filter: blur(26px) brightness(1.35); transform: scale(1.3); }
+  15% { filter: blur(24px) brightness(1.3); transform: scale(1.26); }
+  60% { filter: blur(0); transform: scale(1); }
+  74% { filter: blur(4px); transform: scale(1.02); }
+  100% { filter: blur(0); transform: scale(1); }
 }
-.stage.side-r::before { background: linear-gradient(270deg, rgb(4 6 18 / 0.78), rgb(4 6 18 / 0) 62%); }
-.stage.center::before { background: radial-gradient(60% 55% at 50% 55%, rgb(4 6 18 / 0.7), rgb(4 6 18 / 0)); }
-@media (max-width: 760px) {
-  .stage::before,
-  .stage.side-r::before { background: linear-gradient(180deg, rgb(4 6 18 / 0.35), rgb(4 6 18 / 0.88) 38%); }
-}
-.stage-inner { width: min(100%, 36rem); }
-.stage-inner.wide { width: min(100%, 44rem); }
 
-/* ---------- type ---------- */
-.h-display {
+/* ---------- bento sheet: one screen, tiles ruled on the sky, the world in the lens ---------- */
+.k {
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(3rem, 9.5vw, 6rem);
-  line-height: 0.95;
-  letter-spacing: -0.045em;
+  font-weight: 500;
+  /* 12px is the floor: years, missions flown and plan phases are read, not glanced at */
+  font-size: 0.75rem;
+  line-height: 1.5;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-dim);
   margin: 0;
 }
-.h-section {
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: clamp(1.7rem, 3.5vw, 2.7rem);
-  line-height: 1.1;
-  letter-spacing: -0.035em;
-  text-wrap: balance;
-  margin: 0 0 1.1rem;
-}
-.lede {
-  font-size: clamp(1.1rem, 1.5vw, 1.3rem);
-  line-height: 1.55;
-  color: var(--color-ink-2);
-  max-width: 34rem;
-  text-wrap: pretty;
-}
-.prose p { margin: 0 0 1rem; color: var(--color-ink-2); max-width: 34rem; text-wrap: pretty; }
-.mono, .meta { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.meta { font-size: 0.74rem; line-height: 1.5; color: var(--color-dim); letter-spacing: 0; }
+.k.hi { color: var(--color-ink); }
+.k a, a.k { text-decoration: none; }
 
-/* ---------- navigation ---------- */
-.topbar {
-  position: fixed;
-  inset: 0 0 auto 0;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px var(--gutter);
-  background: linear-gradient(180deg, rgb(4 6 18 / 0.7), rgb(4 6 18 / 0));
-}
-.nav { display: flex; gap: clamp(16px, 2.6vw, 34px); }
-.nav a {
-  font-size: 0.92rem;
-  font-weight: 500;
-  color: var(--color-ink-2);
-  text-decoration: none;
-  padding: 6px 0;
-  text-decoration: underline;
-  text-decoration-color: transparent;
-  text-underline-offset: 0.45em;
-  text-decoration-thickness: 2px;
-  transition: color 0.2s, text-decoration-color 0.2s;
-}
-.nav a:hover { color: var(--color-ink); text-decoration-color: var(--color-amber); }
-.topbar .status {
-  margin: 0 auto 0 0;
-  padding: 7px 12px;
-  border: 1px solid var(--color-line);
-  background: rgb(6 8 24 / 0.6);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--color-ink);
-  text-decoration: none;
-  white-space: nowrap;
-}
-.topbar .status:hover { border-color: var(--color-line-strong); color: var(--color-amber); }
-.topbar .status .dot { display: inline-block; width: 6px; height: 6px; margin-right: 8px; border-radius: 50%; background: var(--color-amber); vertical-align: 1px; }
-@media (max-width: 520px) { .topbar .status { display: none; } }
-@media (max-width: 760px) {
-  .nav a:not(.keep) { display: none; }
-}
-
-/* ---------- controls ---------- */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 0 22px;
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 0.84rem;
-  letter-spacing: -0.01em;
-  text-decoration: none;
-  border: 0;
-  border-radius: 2px;
-  color: #120a24;
-  background: var(--color-amber);
-  cursor: pointer;
-  transition: filter 0.2s, transform 0.3s var(--ease-out-expo);
-}
-.btn:hover { filter: brightness(1.12); transform: translateY(-2px); }
-.link {
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 0.84rem;
-  letter-spacing: -0.01em;
-  color: var(--color-ink);
-  text-decoration: underline;
-  text-decoration-color: var(--color-amber);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 0.5em;
-  transition: color 0.2s;
-}
-.link:hover { color: var(--color-amber); }
-
-/* ---------- content blocks: no hairlines, no chips; rhythm and type do the work ---------- */
-.list { margin: 0; padding: 0; list-style: none; display: grid; gap: clamp(22px, 3.2vh, 34px); }
-.list.tight { gap: 18px; }
-.item-title {
-  margin: 0 0 6px;
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: clamp(1rem, 1.6vw, 1.2rem);
-  letter-spacing: -0.03em;
-  line-height: 1.25;
-  color: var(--color-ink);
-}
-.item-line { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 18px; }
-.item-text { margin: 0; color: var(--color-ink-2); max-width: 31rem; }
-.inline { display: flex; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.9; color: var(--color-ink-2); }
-.inline li + li::before { content: '/'; margin: 0 0.9em; color: var(--color-amber); }
-.when { color: var(--color-dim); }
-.when.now { color: var(--color-amber); }
-
-.mission { transition: transform 0.4s var(--ease-out-expo); }
-.mission:hover { transform: translateX(6px); }
-.mission:hover .item-title { color: var(--color-amber); }
-.mission .item-title { margin: 0; font-size: clamp(1.15rem, 2vw, 1.5rem); transition: color 0.2s; }
-.mission .item-text { margin: 6px 0 8px; }
-
-.pairs { display: grid; grid-template-columns: max-content 1fr; gap: 16px clamp(20px, 3vw, 40px); margin: 0; }
-.pairs dt { font-family: var(--font-display); font-weight: 500; font-size: 0.9rem; letter-spacing: -0.02em; color: var(--color-ink); }
-.pairs dd { margin: 0; color: var(--color-ink-2); }
-@media (max-width: 560px) { .pairs { grid-template-columns: 1fr; gap: 2px; } .pairs dd { margin-bottom: 14px; } }
-
-
-.facts { margin: 40px 0 0; }
-.facts .tag {
-  display: inline-block; margin: 0; padding: 7px 12px;
-  border: 1px solid var(--color-line); background: rgb(6 8 24 / 0.6);
-  font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-ink);
-}
-
-/* ---------- reveal (content stays visible without JS) ---------- */
-html[data-js] .reveal {
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 0.9s var(--ease-out-expo), transform 0.9s var(--ease-out-expo);
-  transition-delay: calc(var(--i, 0) * 80ms);
-}
-html[data-js] .reveal.in { opacity: 1; transform: none; }
-@media (prefers-reduced-motion: reduce) {
-  html[data-js] .reveal { opacity: 1; transform: none; transition: none; }
-}
-
-.foot {
+.sheet {
   position: relative;
   z-index: 2;
-  margin-inline: var(--gutter);
-  margin-bottom: clamp(32px, 6vh, 56px);
-  display: flex; flex-wrap: wrap;
-  border: 1px solid var(--color-line);
-  background: rgb(6 8 24 / 0.6);
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  color: var(--color-dim);
+  /* one screen of six equal rows, so the rows do not move when the web fonts land. A row never shrinks below its text,
+     and when the text cannot fit at all the sheet grows to it (min-content) and the page scrolls a little */
+  height: calc(100svh - 32px);
+  min-height: min-content;
+  margin: 16px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(min-content, 1fr));
 }
-.foot .cell { margin: 0; padding: 12px 16px; border-right: 1px solid var(--color-line); }
-.foot .cell.end { flex: 1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 20px; border-right: 0; }
-.foot b { font-weight: 400; color: var(--color-ink); }
-.foot a, .foot button {
-  color: var(--color-dim); background: none; border: 0; padding: 0; font: inherit; cursor: pointer;
-  text-decoration: underline; text-underline-offset: 3px;
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: clamp(16px, 2.6vh, 22px) clamp(18px, 1.8vw, 26px);
+  outline: 1px solid var(--color-rule);
+  outline-offset: -0.5px;
+  /* opaque: the world shows only through the lens, and the tiles crop it like a porthole */
+  background: var(--color-tile);
+  overflow: hidden;
 }
-.foot a:hover, .foot button:hover:not(:disabled) { color: var(--color-amber); }
-.foot button:disabled { opacity: 0.5; cursor: default; text-decoration: none; }
-.foot .probes { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; color: var(--color-amber); }
-.foot .dot { display: inline-block; width: 6px; height: 6px; margin-right: 8px; border-radius: 50%; background: var(--color-amber); vertical-align: 1px; }
-@media (max-width: 640px) {
-  .foot .cell { flex: 1 1 100%; border-right: 0; border-bottom: 1px solid var(--color-line); }
-  .foot .cell.end { border-bottom: 0; justify-content: flex-start; }
+.tile h2 { margin: 0; }
+.tile .no { position: absolute; right: 20px; top: 22px; }
+/* a landscape lens: wide across the top, the working tiles in a band beneath it */
+.t-id { grid-column: 1 / 4; grid-row: 1 / 3; justify-content: space-between; gap: 14px; }
+.t-missions { grid-column: 1 / 4; grid-row: 3 / 6; }
+.t-leave { grid-column: 1 / 4; grid-row: 6 / 7; justify-content: center; padding-block: 8px; } /* less padding: the patch takes the height */
+.lens { grid-column: 4 / 13; grid-row: 1 / 5; position: relative; }
+.t-payload { grid-column: 4 / 8; grid-row: 5 / 7; }
+.t-plan { grid-column: 8 / 11; grid-row: 5 / 7; }
+.t-log { grid-column: 11 / 13; grid-row: 6 / 7; justify-content: center; gap: 6px; }
+.t-uplink { grid-column: 11 / 13; grid-row: 5 / 6; justify-content: center; gap: 8px; background: var(--color-amber); outline-color: var(--color-amber); color: var(--color-on-accent); }
+.t-uplink .k { color: var(--color-on-accent); }
+.t-uplink .call { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
+.t-uplink .k { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.8rem; }
+.t-uplink a { white-space: nowrap; }
+.t-uplink a { color: var(--color-on-accent); text-decoration: none; padding: 4px 0; }
+/* the page's focus ring is the accent: on the accent tile it would vanish */
+.t-uplink a:focus-visible { outline-color: var(--color-on-accent); }
+.t-uplink a:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+.t-id .status { text-decoration: none; }
+.t-id .status:hover { color: var(--color-amber); }
+.t-id .dot { display: inline-block; width: 7px; height: 7px; margin-right: 10px; border-radius: 50%; background: var(--color-amber); vertical-align: 1px; }
+.t-id h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(2.6rem, 4.2vw, 3.8rem); line-height: 0.95; letter-spacing: -0.045em; }
+/* the job reads second, right after the name */
+.role { margin: 12px 0 0; font-family: var(--font-display); font-weight: 500; font-size: clamp(1.2rem, 1.7vw, 1.55rem); line-height: 1.05; letter-spacing: -0.03em; color: var(--color-amber); }
+.lead { margin: 0; font-size: 0.95rem; line-height: 1.45; color: var(--color-ink-2); text-wrap: pretty; }
+.sub { margin: 8px 0 0; font-size: 0.875rem; color: var(--color-ink-3); }
+
+.missions { list-style: none; margin: 12px 0 0; padding: 0; }
+.missions li { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 2px 12px; padding: clamp(8px, 1.4vh, 12px) 0; border-top: 1px solid rgb(255 255 255 / 0.08); }
+.missions b { font-weight: 500; font-size: 0.95rem; line-height: 1.35; }
+.missions b a { text-decoration: none; }
+.missions b a:hover { color: var(--color-amber); }
+.missions p { grid-column: 2; margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--color-ink-3); }
+.also { margin: auto 0 0; padding-top: 10px; font-size: 0.85rem; line-height: 1.5; color: var(--color-ink-3); }
+.also .k { margin-right: 10px; }
+/* underlined, not only lighter: a link in a line of text must not rely on colour alone */
+.also a { color: var(--color-ink); text-decoration: underline; text-decoration-color: rgb(236 239 251 / 0.35); text-underline-offset: 3px; }
+.also a:hover { color: var(--color-amber); }
+
+/* tools as tags */
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.tags li { padding: 1px 8px; border: 1px solid var(--color-rule); border-radius: 6px; background: rgb(236 239 251 / 0.04); font-size: 0.78rem; line-height: 1.5; color: var(--color-ink); white-space: nowrap; }
+
+.t-log p { margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--color-ink-2); }
+
+/* drawing-office sheets: a real spacecraft as a wireframe of its 3D model, one per visit (see data/crafts.ts) */
+.fig { position: relative; min-height: 0; }
+/* the drawing never sets the tile's height: it takes the room the text leaves */
+.craft { position: absolute; inset: 0; width: 100%; height: 100%; display: none; object-fit: contain; }
+.cap { display: none; }
+:is(.craft, .cap).on { display: block; }
+/* the probe's name sits under its drawing */
+.bay .craft { height: calc(100% - 26px); }
+.bay .cap { position: absolute; left: 0; bottom: 0; white-space: nowrap; } /* from the left edge: a long name runs into the gutter, not the list */
+@media (prefers-reduced-motion: no-preference) {
+  .bay .craft { animation: plot-x 1.6s var(--ease-out-expo) 0.3s both; }
+  .ascent .craft { animation: plot-y 1.8s var(--ease-out-expo) 0.3s both; }
+}
+@keyframes plot-x { from { clip-path: inset(-10% 110% -10% -10%); } to { clip-path: inset(-10%); } }
+@keyframes plot-y { from { clip-path: inset(110% -10% -10% -10%); } to { clip-path: inset(-10%); } }
+
+/* payload: the craft takes the room, the tools wrap beside it */
+.bay { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 0 clamp(12px, 1.4vw, 22px); margin-top: 10px; }
+.bay .tags { align-content: center; }
+
+/* flight plan: where I am now in large, the steps already flown under it, the launcher standing beside them */
+.ascent { --w: 80px; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--w); grid-template-rows: minmax(0, 1fr) auto; gap: 0 14px; margin-top: 10px; }
+.ascent .fig { grid-column: 2; grid-row: 1 / 3; }
+.plan { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.plan .next { margin: 0; display: flex; flex-direction: column; gap: 2px; padding-left: 10px; border-left: 2px solid var(--color-amber); }
+/* the steps flown sit on the same rule as the current one, dimmed */
+.plan .next .k { color: var(--color-amber); }
+.plan .next b { font-family: var(--font-display); font-weight: 500; font-size: 1rem; line-height: 1.2; letter-spacing: -0.01em; }
+.plan small { font-size: 0.75rem; line-height: 1.3; color: var(--color-ink-3); }
+.plan ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.plan li { display: flex; flex-direction: column; padding-left: 10px; border-left: 2px solid var(--color-rule); font-size: 0.85rem; line-height: 1.3; }
+.cartouche { padding-top: 6px; border-top: 1px solid var(--color-rule); }
+
+/* shore leave: a crew patch per pastime; the row of emblems picks which one is on the table */
+.patches { display: grid; grid-template-columns: clamp(96px, 13.5vh, 132px) minmax(0, 1fr); gap: 0 clamp(12px, 1.2vw, 16px); align-items: center; }
+.stage { position: relative; aspect-ratio: 1; }
+.slot { position: absolute; inset: 0; display: none; }
+.slot.on { display: block; }
+.patch { display: block; width: 100%; height: 100%; overflow: visible; }
+.patch .cloth { fill: #0b0e22; stroke: var(--color-ink-2); stroke-width: 1.4; }
+.patch .stitch { fill: none; stroke: var(--color-ink-2); stroke-width: 0.9; stroke-dasharray: 2.2 1.8; opacity: 0.6; } /* the sewn edge */
+.patch .field { fill: color-mix(in oklab, var(--color-amber) 16%, #070a1a); }
+.patch .rule { fill: none; stroke: var(--color-amber); stroke-width: 1.6; }
+.patch .limb { fill: var(--color-amber); opacity: 0.85; }
+.patch .orbit { fill: none; stroke: var(--color-ink); stroke-width: 0.8; opacity: 0.45; }
+.patch .star { fill: var(--color-ink); }
+.patch .emblem { fill: none; stroke: var(--color-ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; paint-order: stroke; filter: drop-shadow(0 0 1.5px #070a1a); }
+.patch .rim { fill: var(--color-ink); font-family: var(--font-display); font-weight: 700; font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; text-anchor: middle; }
+.patch .motto { font-weight: 500; font-size: 6.2px; letter-spacing: 0.2em; fill: var(--color-ink-2); }
+@media (prefers-reduced-motion: no-preference) {
+  .slot.on { animation: pin 0.45s var(--ease-out-expo); }
+}
+@keyframes pin { from { transform: rotate(-14deg) scale(0.86); opacity: 0; } }
+.about { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.line { margin: 0; font-size: 0.78rem; line-height: 1.35; color: var(--color-ink-2); min-height: 2.7em; }
+.line span { display: none; }
+.line span.on { display: inline; }
+.line b { font-weight: 500; color: var(--color-ink); }
+.emblems { display: grid; grid-template-columns: repeat(auto-fill, 30px); gap: 5px; }
+/* each badge in its patch's cut */
+.emblems button { width: 30px; height: 30px; padding: 6px; border: 1.5px solid color-mix(in oklab, var(--color-amber) 50%, transparent); border-radius: 50%; background: color-mix(in oklab, var(--color-amber) 10%, transparent); color: var(--color-amber); cursor: pointer; transition: transform 0.2s var(--ease-out-expo), background 0.2s; }
+.emblems button:nth-child(4n + 2) { border-radius: 30%; }
+.emblems button:nth-child(4n + 3) { border-radius: 4px 4px 50% 50%; }
+.emblems button:nth-child(4n + 4) { border-radius: 9px; }
+.emblems svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.emblems button:hover { transform: translateY(-2px); background: color-mix(in oklab, var(--color-amber) 22%, transparent); }
+.emblems button.on { background: var(--color-amber); border-color: var(--color-amber); color: var(--color-on-accent); }
+
+/* too small for one screen: the sheet becomes a column, the lens right after who I am */
+@media (max-width: 1023px), (max-height: 679px) {
+  .sheet { height: auto; min-height: 0; margin: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; }
+  .sheet > * { grid-column: 1 / -1 !important; grid-row: auto !important; }
+  .t-id { order: -2; }
+  .lens { order: -1; height: min(70svh, 560px); }
+  .bay, .ascent { min-height: 200px; }
+}
+/* a phone: the craft sits above its parts list, which needs the full width */
+@media (max-width: 639px) {
+  .bay { grid-template-columns: minmax(0, 1fr); grid-template-rows: 160px auto; gap: 12px 0; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .t-payload, .t-plan { grid-column: auto / span 1 !important; }
 }

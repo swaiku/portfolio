@@ -8,7 +8,7 @@
   import { sim } from '../../lib/planet/sim.svelte';
   import { BAKE, quality } from '../../lib/planet/quality.svelte';
   import { describe } from '../../lib/planet/facts';
-  import { atlas, boost, COOLDOWN, markLocked, noteWorld } from '../../lib/atlas.svelte';
+  import { atlas, COOLDOWN, keepThumb, markLocked, noteWorld, wantsThumb } from '../../lib/atlas.svelte';
   import { stage } from '../../lib/interactions';
   import { createSkyMaterial } from '../../lib/planet/tsl/sky';
   import { createAtmosphereMaterial } from '../../lib/planet/tsl/atmosphere';
@@ -26,7 +26,7 @@
   const CAMERA_Z = 10;
   const SUN = new Vector3(...SUN_DIR).normalize();
 
-  const { renderer, size, advance } = useThrelte();
+  const { renderer, scene, camera, size, advance } = useThrelte();
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   
   let { u }: { u: Uniforms } = $props();
@@ -73,7 +73,7 @@
       look = l;
       announce(w, a);
     },
-    { texture: BAKE[quality.tier], reduced, restore: atlas.last, boost: boost() },
+    { texture: BAKE[quality.tier], reduced, restore: atlas.last },
   );
 
   const materials = {
@@ -180,6 +180,71 @@
     u.flareProg.value = p;
     u.flare.value = MathUtils.smoothstep(p, 0, 0.1) * (1 - MathUtils.smoothstep(p, 0.5, 1));
   };
+  // the atlas keeps a small picture of the first world of each class: one extra frame, drawn and copied in the same
+  // task so the canvas still holds it, cropped around the body
+  let snapped = false;
+  const THUMB = 288; // twice the largest size the atlas shows it at, for sharp screens
+  // a visitor scrolled past the lens (a phone) would leave the body off the canvas, and the picture cut or black
+  const lensInView = () => {
+    const b = document.querySelector('[data-lens]')?.getBoundingClientRect();
+    return !b || (b.top >= 0 && b.bottom <= innerHeight);
+  };
+  const snap = () => {
+    try {
+      // the body alone on black: the sky is left out of this one frame
+      if (dome) dome.visible = false;
+      renderer.render(scene, camera.current);
+      const c = renderer.domElement;
+      const k = c.width / c.clientWidth;
+      const r = stage.r * 2; // the whole body: atmosphere, rings and close moons
+      const out = document.createElement('canvas');
+      out.width = out.height = THUMB;
+      const ctx = out.getContext('2d', { willReadFrequently: true })!;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(c, (stage.x - r) * k, (stage.y - r) * k, 2 * r * k, 2 * r * k, 0, 0, THUMB, THUMB);
+      if (dome) dome.visible = true;
+      renderer.render(scene, camera.current); // put the sky back before the frame is shown
+      // an all-black read means the frame was already gone: keep no picture rather than a black square
+      const px = ctx.getImageData(0, 0, THUMB, THUMB).data;
+      let lit = 0;
+      for (let i = 0; i < px.length; i += 16) lit += px[i] + px[i + 1] + px[i + 2];
+      if (lit < 4000) return;
+      // Safari cannot encode WebP and returns a much larger PNG: JPEG there (the body is on black, so nothing is lost)
+      const webp = out.toDataURL('image/webp', 0.9);
+      keepThumb(atlas.current.id, webp.startsWith('data:image/webp') ? webp : out.toDataURL('image/jpeg', 0.85));
+    } catch { /* no picture: the atlas shows the class's mark instead */ }
+    if (dome) dome.visible = true;
+  };
+
+  // tuning away: hand the lens a copy of the frame on screen, at half size, so it can tear it apart (Lens.svelte)
+  const grab = (kind?: string) => {
+    try {
+      renderer.render(scene, camera.current);
+      const c = renderer.domElement;
+      const out = document.createElement('canvas');
+      out.width = Math.round(c.width / 2);
+      out.height = Math.round(c.height / 2);
+      out.getContext('2d')!.drawImage(c, 0, 0, out.width, out.height);
+      dispatchEvent(new CustomEvent('planet:frame', { detail: { frame: out, kind } }));
+    } catch { /* no copy: the lens cuts straight to static */ }
+  };
+
+  // arriving: the lens pulls focus on the new world, hunting once past it before it settles (global.css, .focus).
+  // Once per world: the fade-in can outlast the pull
+  let focused = false;
+  let focusTimer = 0;
+  const stepFocus = () => {
+    if (baker.phase !== 'fadein' && baker.phase !== 'live') focused = false;
+    // a weak device keeps the plain fade-in: a full-screen animated blur costs it frames while the world is still settling
+    if (baker.phase !== 'fadein' || focused || reduced || quality.tier === 'low') return;
+    focused = true;
+    const root = document.documentElement;
+    root.classList.remove('focus');
+    void root.offsetWidth; // restart the animation
+    root.classList.add('focus');
+    clearTimeout(focusTimer);
+    focusTimer = window.setTimeout(() => root.classList.remove('focus'), 3400);
+  };
   const side = (x: number) => MathUtils.smoothstep(Math.abs(x), 0.15, 0.45);
 
   useTask((dt) => {
@@ -216,6 +281,7 @@
     const radius = scale * look.size * Math.min(halfH, halfW);
     // a planet sinking to the page end shows a cap: keep its top at the middle of the screen whatever its size, so enough of it is seen
     if (look.kind === 'planet') y = Math.max(y, -0.05 - radius / halfH);
+    y += stages.state.shift;
 
     if (group) {
       group.rotation.set(look.tilt[0] + pointer.y * 0.03, 0, look.tilt[1]);
@@ -252,7 +318,7 @@
     // a mouse drag turns the body; the push it leaves behind fades out
     drag += stage.drag;
     stage.drag = 0;
-    angle += reduced ? 0 : dt * 0.05;
+    angle += reduced ? 0 : dt * (look.galaxy ? 0.006 : 0.05); // a galaxy's stars orbit on their own: the disk itself barely turns
     angle -= drag * 0.4; // rotateY turns the sampling frame, so the sign is opposite to the surface
     drag *= Math.exp(-dt * 3);
     spin += (stages.state.scroll * 0.6 - spin) * (reduced ? 1 : 1 - Math.exp(-dt * 1.6));
@@ -274,8 +340,19 @@
     if (baker.phase === 'live' && !lockedAt) {
       lockedAt = performance.now();
       markLocked();
+      if (queued) {
+        const e = queued;
+        queued = null;
+        reseed(e);
+      }
     }
     if (baker.phase !== 'live') lockedAt = 0;
+    stepFocus();
+    if (!lockedAt) snapped = false;
+    else if (!snapped && performance.now() - lockedAt > 1200 && wantsThumb() && lensInView()) {
+      snapped = true;
+      snap();
+    }
     if (acc > 0.4) {
       acc = 0;
       sim.cool = lockedAt ? Math.max(0, Math.ceil(COOLDOWN - (performance.now() - lockedAt) / 1000)) : COOLDOWN;
@@ -286,12 +363,25 @@
   });
 
   const reseed = (e: Event) => {
-    // the atlas may ask for a class by name (a probe); otherwise the odds lean toward classes not seen yet
+    // the dial or the atlas may ask for a class by name, or bring back a world already seen
     const { kind, replay } = (e as CustomEvent<{ kind?: string; replay?: RollArgs }>).detail ?? {};
-    if (baker.phase === 'live' && sim.cool > 0 && !kind && !replay) return;
-    replaying = !!replay;
-    baker.reseed(kind, kind ? undefined : boost(), replay);
+    // a world still being made cannot be replaced: keep the latest request and run it once this one is live
+    if (baker.phase !== 'live') { queued = e; return; }
+    if (sim.cool > 0 && !kind && !replay) return;
+    const go = () => {
+      pending = 0;
+      replaying = !!replay;
+      baker.reseed(kind, undefined, replay);
+    };
+    clearTimeout(pending);
+    // the old world tears, then the lens holds on the tuning screen a moment before the new one starts
+    if (baker.phase === 'live' && !reduced) {
+      grab(kind);
+      pending = window.setTimeout(go, 1000);
+    } else go();
   };
+  let pending = 0;
+  let queued: Event | null = null;
   // the debug panel changed a baked uniform: bake the current world again, without rolling a new one
   const rebake = () => baker.rebake();
   onMount(() => {
